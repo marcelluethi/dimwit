@@ -1,0 +1,54 @@
+name: CI Build and Test
+
+on:
+  push:
+    branches:
+      - main
+      - cicd
+  pull_request:
+    branches:
+      - main
+  workflow_run:
+    workflows: ["Build and Push CI Docker Image"]
+    types:
+      - completed
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-ci
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache SBT dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt', 'project/**') }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-
+
+      - name: Compile core module
+        run: sbt "project core" compile
+
+      - name: Compile nn module
+        run: sbt "project nn" compile
+
+      - name: Compile examples module
+        run: sbt "project examples" compile
+
+#      - name: Check formatting
+#        run: sbt scalafmtCheckAll || echo "Formatting check failed (non-blocking)"

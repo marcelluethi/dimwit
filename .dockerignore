@@ -1,0 +1,42 @@
+# Build artifacts
+target/
+project/target/
+project/project/target/
+examples/target/
+
+# IDE files
+.bsp/
+.metals/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.bak
