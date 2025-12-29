@@ -182,7 +182,7 @@ object MLPClassifierMNist:
       val lossBatch = batchLoss(imageBatch, labelBatch)
       val df = Autodiff.grad(lossBatch)
       GradientDescent(df, learningRate).step(params)
-    val jitStep = jit(gradientStep.tupled)
+    val jitStep = jit(gradientStep)
     def miniBatchGradientDescent(
         imageBatches: Seq[Tensor[(TrainSample, Height, Width), Float]],
         labelBatches: Seq[Tensor1[TrainSample, Int]]
@@ -217,7 +217,7 @@ object MLPClassifierMNist:
       val model = MLP(params)
       val predictions = dataX.vmap(Axis[Sample])(model)
       accuracy(predictions, dataY)
-    val jitEvaluate = jit(evaluate.tupled)
+    val jitEvaluate = jit(evaluate)
     val finalParams = trainTrajectory.zipWithIndex
       .tapEach:
         case (params, epoch) =>
