@@ -1,0 +1,39 @@
+services:
+  shapeful:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: shapeful:latest
+    container_name: shapeful-dev
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      # Mount the project directory
+      - .:/workspace
+      # Mount the SBT cache to avoid re-downloading dependencies
+      - sbt-cache:/root/.sbt
+      - ivy-cache:/root/.ivy2
+      - coursier-cache:/root/.cache/coursier
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    ports:
+      # Jupyter notebook
+      - "8888:8888"
+      # Additional ports for your application
+      - "5000:5000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  sbt-cache:
+  ivy-cache:
+  coursier-cache:
