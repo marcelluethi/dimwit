@@ -13,7 +13,7 @@ class Normal[T <: Tuple: Labels](
     val scale: Tensor[T, Float]
 ) extends IndependentDistribution[T, Float]:
 
-  require(loc.shape == scale.shape, "loc and scale must have the same shape")
+  require(loc.shape.dimensions == scale.shape.dimensions, "loc and scale must have the same dimensions")
 
   override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(jstats.norm.logpdf(x.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue))
@@ -32,7 +32,7 @@ class Uniform[T <: Tuple: Labels](
     val low: Tensor[T, Float],
     val high: Tensor[T, Float]
 ) extends IndependentDistribution[T, Float]:
-  require(low.shape == high.shape, "Low and high must have the same shape")
+  require(low.shape.dimensions == high.shape.dimensions, "Low and high must have the same dimensions")
 
   override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(jstats.uniform(loc = low.jaxValue, scale = (high - low).jaxValue).logpdf(x.jaxValue))
@@ -88,7 +88,7 @@ class Cauchy[T <: Tuple: Labels](
     val loc: Tensor[T, Float],
     val scale: Tensor[T, Float]
 ) extends IndependentDistribution[T, Float]:
-  require(loc.shape == scale.shape, "Location and scale must have the same shape")
+  require(loc.shape.dimensions == scale.shape.dimensions, "Location and scale must have the same dimensions")
 
   override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(jstats.cauchy(loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
@@ -101,7 +101,7 @@ class HalfNormal[T <: Tuple: Labels](
     val scale: Tensor[T, Float]
 ) extends IndependentDistribution[T, Float]:
 
-  require(loc.shape == scale.shape, "Mean and scale must have the same shape")
+  require(loc.shape.dimensions == scale.shape.dimensions, "Mean and scale must have the same dimensions")
 
   override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(jstats.halfnorm(loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
@@ -114,7 +114,7 @@ class StudentT[T <: Tuple: Labels](
     val loc: Tensor[T, Float],
     val scale: Tensor[T, Float]
 ) extends IndependentDistribution[T, Float]:
-  require(loc.shape == scale.shape, "loc, and scale must have the same shape")
+  require(loc.shape.dimensions == scale.shape.dimensions, "loc, and scale must have the same dimensions")
 
   override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(jstats.t(df = df, loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
