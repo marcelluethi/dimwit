@@ -42,26 +42,26 @@ def apply_over_axes(f, axis):
     # Create vmap with the wrapper
     return jnp.apply_over_axes(python_wrapper, axis)
 
-def vmap2(f, dims):
+def vmapN(f, dims):
     """
-    Applies a function `f` to two tensors using JAX's vmap functionality.
+    Applies a function `f` to N tensors using JAX's vmap functionality.
     
     Args:
-        f: Function that takes two arguments (x, y)
-        dims: Either an integer (same axis for both inputs) or tuple (axis1, axis2)
+        f: Function that takes N arguments (*args)
+        dims: Either an integer (same axis for all inputs) or tuple of axes (axis1, axis2, ..., axisN)
     
     It is wrapped in a Python function to ensure that the function, as otherwise
     jax will crash upon inspection.
     """
                 
     # Wrap the ScalaPy function in a pure Python wrapper
-    def python_wrapper(x, y):
-        return f(x, y)
+    def python_wrapper(*args):
+        return f(*args)
     
     # Handle dims parameter - can be int or tuple
     if isinstance(dims, int):
-        # Same axis for both inputs
-        in_axes = (dims, dims)
+        # Same axis for all inputs - no need to expand, jax.vmap handles this
+        in_axes = dims
     else:
         # Different axes for each input
         in_axes = dims

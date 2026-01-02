@@ -682,96 +682,8 @@ object TensorOps:
   // -----------------------------------------------------------
   object Functional:
 
-    object ZipVmap:
-
-      type TensorsOf[Shapes <: Tuple, Values <: Tuple] <: Tuple = (Shapes, Values) match
-        case (EmptyTuple, EmptyTuple)                             => EmptyTuple
-        case ((shapeHead *: shapeTail), (valueHead *: valueTail)) => Tensor[shapeHead, valueHead] *: TensorsOf[shapeTail, valueTail]
-
-      type ExtractShape[T] = T match
-        case Tensor[s, v] => s
-
-      type ExtractValue[T] = T match
-        case Tensor[s, v] => v
-
-      type ShapesOf[Tensors <: Tuple] = Tuple.Map[Tensors, ExtractShape]
-      type ValuesOf[Tensors <: Tuple] = Tuple.Map[Tensors, ExtractValue]
-
-      trait Zipper[Shapes <: Tuple, L, Values <: Tuple]:
-        type SlicedShapes <: Tuple
-        def dimSize(tensors: TensorsOf[Shapes, Values], axis: Axis[L]): Int
-        def sliceAll(tensors: TensorsOf[Shapes, Values], axis: Axis[L], idx: Int): TensorsOf[SlicedShapes, Values]
-
-      object Zipper:
-        type Aux[Shapes <: Tuple, L, Values <: Tuple, O <: Tuple] = Zipper[Shapes, L, Values] { type SlicedShapes = O }
-
-        given empty[L]: Zipper.Aux[EmptyTuple, L, EmptyTuple, EmptyTuple] = new Zipper[EmptyTuple, L, EmptyTuple]:
-          type SlicedShapes = EmptyTuple
-          def dimSize(t: EmptyTuple, axis: Axis[L]) = 0
-          def sliceAll(t: EmptyTuple, axis: Axis[L], idx: Int) = EmptyTuple
-
-        given cons[HeadShape <: Tuple: Labels, TailShapes <: Tuple, L: Label, TailSliced <: Tuple, HeadValue, TailValues <: Tuple, R <: Tuple](using
-            remover: Remover.Aux[HeadShape, L, R],
-            axisIndex: AxisIndex[HeadShape, L],
-            tailZipper: Zipper.Aux[TailShapes, L, TailValues, TailSliced],
-            labels: Labels[R]
-        ): Zipper.Aux[HeadShape *: TailShapes, L, HeadValue *: TailValues, R *: TailSliced] =
-          new Zipper[HeadShape *: TailShapes, L, HeadValue *: TailValues]:
-            type SlicedShapes = R *: TailSliced
-
-            def dimSize(tensors: TensorsOf[HeadShape *: TailShapes, HeadValue *: TailValues], axis: Axis[L]): Int =
-              val head = tensors.asInstanceOf[Tensor[HeadShape, HeadValue] *: Tuple].head
-              head.shape.dimensions(axisIndex.value)
-
-            def sliceAll(tensors: TensorsOf[HeadShape *: TailShapes, HeadValue *: TailValues], axis: Axis[L], idx: Int): TensorsOf[SlicedShapes, HeadValue *: TailValues] =
-              val tuple = tensors.asInstanceOf[Tensor[HeadShape, HeadValue] *: TensorsOf[TailShapes, TailValues]]
-              val slicedHead = tuple.head.slice(axis -> idx)
-              val slicedTail = tailZipper.sliceAll(tuple.tail, axis, idx)
-              (slicedHead *: slicedTail).asInstanceOf[TensorsOf[SlicedShapes, HeadValue *: TailValues]]
-
-      case class ZipResult[L: Label, Shapes <: Tuple, Values <: Tuple](
-          axis: Axis[L],
-          tensors: TensorsOf[Shapes, Values]
-      ):
-        def vmap[OutShape <: Tuple: Labels, OutV](using
-            zipper: Zipper[Shapes, L, Values]
-        )(
-            f: TensorsOf[zipper.SlicedShapes, Values] => Tensor[OutShape, OutV]
-        ): Tensor[L *: OutShape, OutV] =
-
-          val size = zipper.dimSize(tensors, axis)
-
-          val results = (0 until size).map { i =>
-            val slicedTuple = zipper.sliceAll(tensors, axis, i)
-            f(slicedTuple)
-          }
-
-          Structural.stack(results, axis)
-
-      def zip[L: Label, Inputs <: Tuple](
-          axis: Axis[L]
-      )(
-          tensors: Inputs
-      ): ZipResult[L, ShapesOf[Inputs], ValuesOf[Inputs]] =
-        ZipResult(axis, tensors.asInstanceOf[TensorsOf[ShapesOf[Inputs], ValuesOf[Inputs]]])
-
-      def zipvmap[
-          L: Label,
-          Inputs <: Tuple,
-          OutShape <: Tuple: Labels,
-          OutV
-      ](
-          axis: Axis[L]
-      )(
-          tensors: Inputs
-      )(using
-          zipper: Zipper[ShapesOf[Inputs], L, ValuesOf[Inputs]]
-      )(
-          f: TensorsOf[zipper.SlicedShapes, ValuesOf[Inputs]] => Tensor[OutShape, OutV]
-      ): Tensor[L *: OutShape, OutV] =
-        zip(axis)(tensors).vmap(f)
-
-    export ZipVmap.zipvmap
+    // Export zipvmap operations from the dedicated ZipVmap module
+    export dimwit.tensor.ZipVmap.{zipvmap, zip}
 
     extension [T <: Tuple: Labels, V](t: Tensor[T, V])
 
@@ -851,6 +763,12 @@ object TensorOps:
     extension [V: Reader](scalar: Tensor0[V])
 
       def item: V = scalar.jaxValue.item().as[V]
+
+    // Specialized extension for Random.Key since
+    // JAX's .item() is not implemented for PRNGKey types,
+    // but we want to have the same usage
+    extension (scalar: Tensor0[dimwit.random.Random.Key])
+      def item: dimwit.random.Random.Key = dimwit.random.Random.Key(scalar.jaxValue)
     /*
     extension [V: IsNumber](scalar: Tensor0[V])
 
