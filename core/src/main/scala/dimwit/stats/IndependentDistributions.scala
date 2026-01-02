@@ -15,8 +15,8 @@ class Normal[T <: Tuple: Labels](
 
   require(loc.shape.dimensions == scale.shape.dimensions, "loc and scale must have the same dimensions")
 
-  override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
-    Tensor.fromPy(VType[Float])(jstats.norm.logpdf(x.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue))
+  override def logProb(x: Tensor[T, Float]): Tensor[T, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.norm.logpdf(x.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue))
 
   override def sample(key: Random.Key): Tensor[T, Float] =
     val standardNormal = Tensor.fromPy[T, Float](VType[Float])(Jax.jrandom.normal(key.jaxKey, loc.shape.dimensions.toPythonProxy))
@@ -34,8 +34,8 @@ class Uniform[T <: Tuple: Labels](
 ) extends IndependentDistribution[T, Float]:
   require(low.shape.dimensions == high.shape.dimensions, "Low and high must have the same dimensions")
 
-  override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
-    Tensor.fromPy(VType[Float])(jstats.uniform(loc = low.jaxValue, scale = (high - low).jaxValue).logpdf(x.jaxValue))
+  override def logProb(x: Tensor[T, Float]): Tensor[T, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.uniform(loc = low.jaxValue, scale = (high - low).jaxValue).logpdf(x.jaxValue))
 
   override def sample(key: Random.Key): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(
@@ -46,21 +46,21 @@ class Bernoulli[T <: Tuple: Labels](
     val probs: Tensor[T, Float]
 ) extends IndependentDistribution[T, Int]:
 
-  override def logProb(x: Tensor[T, Int]): Tensor[T, Float] =
-    Tensor.fromPy(VType[Float])(jstats.bernoulli(p = probs.jaxValue).logpmf(x.jaxValue))
+  override def logProb(x: Tensor[T, Int]): Tensor[T, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.bernoulli(p = probs.jaxValue).logpmf(x.jaxValue))
 
   override def sample(key: Random.Key): Tensor[T, Int] =
     Tensor.fromPy(VType[Int])(Jax.jrandom.bernoulli(key.jaxKey, p = probs.jaxValue))
 
 class Multinomial[L: Label](
     val n: Int,
-    val probs: Tensor1[L, Float]
+    val probs: Tensor1[L, Prob]
 ) extends IndependentDistribution[Tuple1[L], Int]:
 
-  private lazy val logProbs: Tensor1[L, Float] = probs.log
+  private lazy val logProbs: Tensor1[L, LogProb] = probs.log
 
-  override def logProb(x: Tensor1[L, Int]): Tensor1[L, Float] =
-    Tensor.fromPy(VType[Float])(jstats.multinomial(n = n, p = probs.jaxValue).logpmf(x.jaxValue))
+  override def logProb(x: Tensor1[L, Int]): Tensor1[L, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.multinomial(n = n, p = probs.jaxValue).logpmf(x.jaxValue))
 
   override def sample(key: Random.Key): Tensor1[L, Int] =
     Tensor.fromPy(VType[Int])(
@@ -76,8 +76,8 @@ class Categorical[L: Label](val probs: Tensor1[L, Float]) extends IndependentDis
   private val numCategories = probs.shape.dimensions(0)
   private val logProbs = probs.log
 
-  override def logProb(x: Tensor0[Int]): Tensor0[Float] =
-    Tensor.fromPy(VType[Float]) {
+  override def logProb(x: Tensor0[Int]): Tensor0[LogProb] =
+    Tensor.fromPy(VType[LogProb]) {
       val indices = py.Dynamic.global.`range`(numCategories)
       jstats.rv_discrete(values = indices, probs.jaxValue).logpmf(x.jaxValue)
     }
@@ -90,8 +90,8 @@ class Cauchy[T <: Tuple: Labels](
 ) extends IndependentDistribution[T, Float]:
   require(loc.shape.dimensions == scale.shape.dimensions, "Location and scale must have the same dimensions")
 
-  override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
-    Tensor.fromPy(VType[Float])(jstats.cauchy(loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
+  override def logProb(x: Tensor[T, Float]): Tensor[T, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.cauchy(loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
 
   override def sample(k: Random.Key): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(Jax.jrandom.cauchy(k.jaxKey, shape = loc.shape.dimensions.toPythonProxy))
@@ -103,8 +103,8 @@ class HalfNormal[T <: Tuple: Labels](
 
   require(loc.shape.dimensions == scale.shape.dimensions, "Mean and scale must have the same dimensions")
 
-  override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
-    Tensor.fromPy(VType[Float])(jstats.halfnorm(loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
+  override def logProb(x: Tensor[T, Float]): Tensor[T, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.halfnorm(loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
 
   override def sample(k: Random.Key): Tensor[T, Float] =
     (Tensor.fromPy[T, Float](VType[Float])(Jax.jrandom.halfnorm(k.jaxKey)) *! scale +! loc).abs
@@ -116,8 +116,8 @@ class StudentT[T <: Tuple: Labels](
 ) extends IndependentDistribution[T, Float]:
   require(loc.shape.dimensions == scale.shape.dimensions, "loc, and scale must have the same dimensions")
 
-  override def logProb(x: Tensor[T, Float]): Tensor[T, Float] =
-    Tensor.fromPy(VType[Float])(jstats.t(df = df, loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
+  override def logProb(x: Tensor[T, Float]): Tensor[T, LogProb] =
+    Tensor.fromPy(VType[LogProb])(jstats.t(df = df, loc = loc.jaxValue, scale = scale.jaxValue).logpdf(x.jaxValue))
 
   override def sample(k: Random.Key): Tensor[T, Float] =
     Tensor.fromPy(VType[Float])(

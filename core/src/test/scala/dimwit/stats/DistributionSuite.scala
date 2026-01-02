@@ -26,7 +26,7 @@ class DistributionSuite extends AnyFunSuite with Matchers:
     val jaxLogProb = Tensor.fromPy[Tuple1[A], Float](VType[Float])(
       jstats.norm.logpdf(x.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue)
     )
-    scalaLogProb should approxEqual(jaxLogProb)
+    scalaLogProb.toFloat should approxEqual(jaxLogProb)
 
   test("Normal sample mean approximates mean"):
     val normal = Normal(
