@@ -159,10 +159,27 @@ def jit_fn(f):
         f: Any function to JIT compile
     
     Returns:
-        JIT-compiled version of the function
+        JIT compiled function
     """
     from jax import jit as jax_jit
-    def python_wrapper(*args, **kwargs):
-        return f(*args, **kwargs)
-    
+    def python_wrapper(*args):
+        return f(*args)
     return jax_jit(python_wrapper)
+
+def jit_update_fn(f):
+    """
+    JIT wrapper with buffer donation for update functions.
+    Donates the first argument (params) to allow JAX to reuse its memory for the output.
+    Use this for training loops where you don't need the old parameters.
+    
+    Args:
+        f: Update function that takes params and returns updated params
+    
+    Returns:
+        JIT compiled function with buffer donation for first argument
+    """
+    from jax import jit as jax_jit
+    def python_wrapper(*args):
+        return f(*args)
+    return jax_jit(python_wrapper, donate_argnums=(0,))
+

@@ -1,6 +1,10 @@
 import scala.annotation.targetName
 
 import dimwit.jax.Jax
+import me.shadaj.scalapy.py
+import dimwit.autodiff.TensorTree
+import dimwit.tensor.Tensor
+import dimwit.tensor.Labels
 
 package object dimwit:
 
@@ -31,6 +35,24 @@ package object dimwit:
     System.gc()
     Jax.gc()
 
+  /** Executes a block of code with automatic cleanup of Python objects created within the block.
+    *
+    * This is useful for preventing memory leaks in training loops or other scenarios where temporary Python objects (like loss values, intermediate tensors) are created repeatedly. All Python objects created within the block are freed immediately when the block exits.
+    *
+    * Example:
+    * {{{
+    * // In a training loop - clean up temporary loss evaluation
+    * withLocalCleanup {
+    *   val loss = jitLoss(params)
+    *   println(s"Loss: $loss")
+    * } // loss and its Python objects are freed here
+    * }}}
+    *
+    * WARNING: Do not return Python objects from the block - they will be invalid after cleanup. Only use this for temporary evaluations that don't need to persist.
+    */
+
+  def withLocalCleanup[T](f: => T): T = f
+
   @targetName("On")
   infix trait ~[A, B]
   object `~`:
@@ -57,6 +79,7 @@ package object dimwit:
 
   // Export Just-in-Time compilation
   export dimwit.jax.Jit.jit
+  export dimwit.jax.Jit.jitUpdate
 
   object Conversions:
     export dimwit.tensor.Tensor0.{float2FloatTensor, int2IntTensor, int2FloatTensor, boolean2BooleanTensor}

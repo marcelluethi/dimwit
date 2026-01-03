@@ -5,7 +5,7 @@ ThisBuild / scalaVersion := "3.7.0"
 ThisBuild / organization := "ch.contrafactus"
 
 // Add resolver for snapshot dependencies
-ThisBuild / resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+ThisBuild / resolvers += "Sonatype OSS Snapshots" at "https://central.sonatype.com/repository/maven-snapshots"
 
 ThisBuild / envVars := Map(
   "PYTHONPATH" -> ((ThisBuild / baseDirectory).value / "src" / "python").getAbsolutePath
@@ -49,7 +49,8 @@ lazy val examples = (project in file("examples"))
     // Examples use the same Scala version and dependencies as main project
     libraryDependencies ++= Seq(
       "org.scala-lang" %% "toolkit" % "0.1.7",
-      "dev.scalapy" %% "scalapy-core" % "0.5.3"
+      "dev.scalapy" %% "scalapy-core" % "0.5.3",
+      "ch.unibas.cs.gravis" %% "scaltair" % "0.2-SNAPSHOT"
     ),
     fork := true,
     // Don't publish examples

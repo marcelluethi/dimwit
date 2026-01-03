@@ -17,6 +17,6 @@ project/project/**
 examples/target/
 examples/*/.scala-build
 ide-*.json
-examples/vae_output
+examples/plots
 *.bak
 .envrc

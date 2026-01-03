@@ -34,3 +34,38 @@ object Jit:
       val pyTreePy = ToPyTree[InPyTree].toPyTree(pyTree)
       val res = jitted(pyTreePy)
       ToPyTree[OutPyTree].fromPyTree(res)
+
+  /** JIT compiles an update function with buffer donation.
+    *
+    * This enables JAX to reuse the input buffer for the output, significantly reducing memory usage in training loops where the old parameters are no longer needed.
+    *
+    * WARNING: After calling this function, the input argument is "donated" and should not be used again. JAX may reuse its memory for the output.
+    *
+    * Example:
+    * {{{
+    * val jitStep = jitUpdate(gradientStep)
+    * params = jitStep(params)  // Old params memory is reused
+    * }}}
+    *
+    * @param f
+    *   Update function that takes input and returns updated version
+    * @return
+    *   JIT compiled function with buffer donation
+    */
+  def jitUpdate[T: ToPyTree](f: T => T): T => T =
+
+    // Python function that accepts a pytree
+    val fpy = (pyTreePy: Jax.PyDynamic) =>
+      val pyTree = ToPyTree[T].fromPyTree(pyTreePy)
+      val result = f(pyTree)
+      val tt = ToPyTree[T].toPyTree(result)
+      tt
+
+    // Apply JIT compilation with buffer donation
+    val jitted = Jax.jax_helper.jit_update_fn(fpy)
+
+    // Return a function that converts Scala types to pytree and applies jitted function
+    (pyTree: T) =>
+      val pyTreePy = ToPyTree[T].toPyTree(pyTree)
+      val res = jitted(pyTreePy)
+      ToPyTree[T].fromPyTree(res)
