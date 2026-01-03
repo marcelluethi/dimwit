@@ -18,6 +18,7 @@ object Random:
 
   /** A random key for generating random numbers */
   case class Key(jaxKey: Jax.PyDynamic):
+
     /** Split this key into multiple independent keys */
     def split(num: Int): Seq[Key] =
       val splitKeys = Jax.jrandom.split(jaxKey, num)
@@ -35,10 +36,17 @@ object Random:
 
     /** Generate a tensor of samples by splitting the key along the given axis and applying f to each sub-key ^ */
     def splitvmap[L: Label, T <: Tuple: Labels, V](axis: Axis[L], n: Int)(f: Key => Tensor[T, V]): Tensor[L *: T, V] =
-      this.splitToTensor(axis, n).vmap(axis)(k => f(Key(k.jaxValue)))
+      this.splitToTensor(axis, n).vmap(axis)(k => f(k.item))
 
     /** Generate a new key by splitting */
     def next(): Key = split2()._2
+
+    override def equals(other: Any): Boolean =
+      other match
+        case that: Key => Jax.jnp.array_equal(this.jaxKey, that.jaxKey).item().as[Boolean]
+        case _         => false
+
+    override def hashCode(): Int = jaxKey.tobytes().hashCode()
 
   object Key:
     /** Create a random key from an integer seed */
@@ -50,7 +58,9 @@ object Random:
     /** Create a random key from Scala's random */
     def random(): Key = Key(scala.util.Random.nextInt())
 
-    /** Reader instance to enable .item on Tensor0[Key] */
-    given me.shadaj.scalapy.readwrite.Reader[Key] with
-      def read(v: me.shadaj.scalapy.py.Any): Key =
-        Key(v.as[Jax.PyDynamic])
+  // Enable .item on Tensor0[Key] to extract the Key
+  // Note that implementing a Reader instance and using
+  // the standard jax.item does not work, as Key is
+  // not a primitive type in  JAX.
+  extension (tensorKey: Tensor0[Key])
+    def item: Key = Key(tensorKey.jaxValue)
