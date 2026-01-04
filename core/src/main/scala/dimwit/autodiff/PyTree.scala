@@ -14,6 +14,19 @@ trait ToPyTree[P]:
   def toPyTree(p: P): Jax.PyAny
   def fromPyTree(p: Jax.PyAny): P
 
+  /** Serialize a value to a base64-encoded string using JAX's PyTree serialization. The serialized string contains no Python object references and can be stored in memory.
+    */
+  def serialize(p: P): String =
+    val pyTree = toPyTree(p)
+    val jaxHelper = py.module("jax_helper")
+    jaxHelper.serialize_pytree(pyTree).as[String]
+
+  /** Deserialize a value from a base64-encoded string back to the original type. */
+  def deserialize(serialized: String): P =
+    val jaxHelper = py.module("jax_helper")
+    val pyTree = jaxHelper.deserialize_pytree(serialized)
+    fromPyTree(pyTree)
+
 object ToPyTree:
 
   def apply[P](using pt: ToPyTree[P]): ToPyTree[P] = pt

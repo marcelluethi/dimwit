@@ -186,3 +186,92 @@ def jit_update_fn(f, donate_argnums=None):
         return f(*args)
     return jax_jit(python_wrapper, donate_argnums=donate_argnums)
 
+
+def serialize_pytree(pytree):
+    """
+    Serialize a JAX PyTree to a base64-encoded string.
+    
+    Uses JAX's tree_util to flatten the PyTree structure, then pickles
+    the flattened values and tree definition. Handles JAX PRNG keys by
+    converting them to their raw data representation before pickling.
+    
+    Args:
+        pytree: Any JAX PyTree structure (nested dict/list/tuple of arrays)
+    
+    Returns:
+        Base64-encoded string containing the pickled PyTree data
+    """
+    import pickle
+    import base64
+    from jax import tree_util
+    from jax import random
+    import numpy as np
+    
+    # Flatten the PyTree to separate structure from data
+    flat_values, tree_def = tree_util.tree_flatten(pytree)
+    
+    # Convert JAX arrays to numpy and extract PRNG key data
+    flat_numpy = []
+    for v in flat_values:
+        # Check if this is a JAX PRNG key
+        if hasattr(v, 'dtype') and 'key' in str(type(v)).lower():
+            # Extract raw key data for newer JAX versions
+            try:
+                key_data = random.key_data(v)
+                flat_numpy.append(('prng_key', np.asarray(key_data)))
+            except:
+                # Fallback for older JAX versions
+                flat_numpy.append(('prng_key', np.asarray(v)))
+        else:
+            # Regular array
+            flat_numpy.append(('array', np.asarray(v)))
+    
+    # Package the data with tree structure
+    data = {'values': flat_numpy, 'treedef': tree_def}
+    
+    # Pickle and encode to base64
+    pickled = pickle.dumps(data)
+    return base64.b64encode(pickled).decode('utf-8')
+
+
+def deserialize_pytree(b64_string):
+    """
+    Deserialize a JAX PyTree from a base64-encoded string.
+    
+    Reconstructs the PyTree from the pickled data, converting numpy arrays
+    back to JAX arrays and reconstructing PRNG keys properly.
+    
+    Args:
+        b64_string: Base64-encoded string from serialize_pytree
+    
+    Returns:
+        Reconstructed JAX PyTree
+    """
+    import pickle
+    import base64
+    from jax import tree_util
+    from jax import random
+    
+    # Decode from base64 and unpickle
+    pickled = base64.b64decode(b64_string.encode('utf-8'))
+    data = pickle.loads(pickled)
+    
+    # Convert numpy arrays back to JAX arrays and reconstruct keys
+    flat_jax = []
+    for value_type, value in data['values']:
+        if value_type == 'prng_key':
+            # Reconstruct PRNG key from raw data
+            try:
+                # For newer JAX versions that use typed keys
+                key = random.wrap_key_data(value)
+            except:
+                # Fallback: convert to JAX array (works for older versions)
+                key = jnp.asarray(value)
+            flat_jax.append(key)
+        else:
+            # Regular array
+            flat_jax.append(jnp.asarray(value))
+    
+    # Reconstruct the PyTree structure
+    return tree_util.tree_unflatten(data['treedef'], flat_jax)
+

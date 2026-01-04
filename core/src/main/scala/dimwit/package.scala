@@ -51,7 +51,16 @@ package object dimwit:
     * WARNING: Do not return Python objects from the block - they will be invalid after cleanup. Only use this for temporary evaluations that don't need to persist.
     */
 
-  def withLocalCleanup[T](f: => T): T = f
+  def withLocalCleanup[T: ToPyTree](f: => T): T =
+    // All python objects that are allocated within
+    // py.local will be freed when py.local exits
+    // we rescue the resulting pytree and return it.
+    val resSerialized = py.local:
+      val res = f
+      summon[ToPyTree[T]].serialize(res)
+    val res = summon[ToPyTree[T]].deserialize(resSerialized)
+    gc()
+    res
 
   @targetName("On")
   infix trait ~[A, B]
