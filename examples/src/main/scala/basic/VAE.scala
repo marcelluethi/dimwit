@@ -8,12 +8,12 @@ import examples.basic.Decoder.DecoderParams
 import examples.basic.MLPClassifierMNist.MNISTLoader
 import nn.LinearLayer
 import nn.ActivationFunctions.relu
-import examples.basic.LogisticRegression.Sample
-import examples.basic.MLPClassifierMNist.{TrainSample, Height, Width}
+import examples.basic.MLPClassifierMNist.{Sample, TrainSample, Height, Width}
 import nn.GradientDescent
 import dimwit.jax.Jax
 import nn.ActivationFunctions.sigmoid
 import dimwit.random.Random.Key
+import examples.basic.MLPClassifierMNist.TestSample
 
 type SourceFeature = Height |*| Width
 type ReconstructedFeature = Height |*| Width
@@ -42,7 +42,7 @@ class Encoder(p: EncoderParams):
     val h1 = relu(layer1(v))
     val h2 = relu(layer2(h1))
     val mean = meanLayer(h2)
-    val logVar = logVarLayer(h2)
+    val logVar = logVarLayer(h2).clip(Tensor0(-10f), Tensor0(10f))
 
     (mean, logVar)
 
@@ -90,7 +90,7 @@ case class VAE(params: VAE.Params):
 
   def loss(original: FTensor1[Height |*| Width], key: Random.Key): Tensor0[Float] =
     val (reconstructed, mean, logVar) = apply(original, key)
-    val eps = Tensor0(1e-8f)
+    val eps = Tensor0(1e-5f)
     val reconLoss = -((original * (reconstructed +! eps).log) + ((Tensor0(1f) -! original) * (Tensor0(1f) -! reconstructed +! eps).log)).sum
     val kldLoss = Tensor0(-0.5f) * (Tensor0(1f) +! logVar -! mean.pow(Tensor0(2f)) -! logVar.exp).sum
 
@@ -113,10 +113,11 @@ object VAEExample:
   def main(): Unit =
 
     val learningRate = 5e-4f
-    val numSamples = 5000 // 59904
-    val numTestSamples = 20 // 9728
-    val batchSize = 128
-    val numEpochs = 1000
+
+    val numTestSamples = 256 // 9728
+    val batchSize = 512
+    val numSamples = batchSize * 20 // 59904
+    val numEpochs = 800
     val latentDim = 20
 
     val (dataKey, trainKey) = Random.Key(42).split2()
@@ -125,6 +126,9 @@ object VAEExample:
     val (trainX, trainY) = MNISTLoader.createTrainingDataset(maxSamples = Some(numSamples)).get
     val (testX, testY) = MNISTLoader.createTestDataset(maxSamples = Some(numTestSamples)).get
 
+    /*
+     * Initialize the model parameters
+     * */
     val initKeys = initKey.split(7)
     val encoderParams = Encoder.EncoderParams(
       LinearLayer.Params[Height |*| Width, EHidden1](initKeys(0))(
@@ -159,80 +163,78 @@ object VAEExample:
       )
     )
 
-    def batchLoss(batch: Tensor3[TrainSample, Height, Width, Float], batchKeys: Tensor1[TrainSample, Key])(params: VAE.Params): Tensor0[Float] =
-      val vae = VAE(params)
-      zipvmap(Axis[TrainSample])(batch, batchKeys) { (sample, key) =>
-        vae.loss(sample.ravel, key.item)
-      }.mean
-
-    def gradientStep(batch: Tensor3[TrainSample, Height, Width, Float], batchKeys: Tensor1[TrainSample, Key], params: VAE.Params): VAE.Params =
-      val lossBatch = batchLoss(batch, batchKeys)
-      val df = Autodiff.grad(lossBatch)
-      GradientDescent(df, Tensor0(learningRate)).step(params)
-
-    val jitStep = jit(gradientStep)
+    // we need to scale down the initial parameters for
+    // better training stability.
+    // TODO linear layer et al. should support custom initializers
+    // or xavier initialization
     val initialParams = VAE.Params(encoderParams, decoderParams)
-
     val scaledInitialParams = FloatTensorTree[VAE.Params].map(
       initialParams,
       [T <: Tuple] => (n: Labels[T]) ?=> (t: Tensor[T, Float]) => t *! Tensor0(0.1f)
     )
 
-    val firstImage = trainX.slice(Axis[TrainSample] -> 0)
-    ImageVis.plotImage(
-      firstImage.rearrange(
-        (Axis[Height], Axis[Width]),
-        (Axis[Height] -> 28, Axis[Width] -> 28)
-      ),
-      "./plots/vae_original-0.html",
-      "VAE Original Image"
-    )
+    /*
+     * split the training data into batches
+     * TODO, argument of chunk is called interval,
+     * but it is actually the number of chunks to create!
+     */
+    val batches = trainX.chunk(Axis[TrainSample], numSamples / batchSize)
+    println(s"Number of batches: ${batches.size}")
 
-    // Create batches manually to handle uneven splits
-    val numBatches = (numSamples + batchSize - 1) / batchSize
-    val trainXBatches = (0 until numBatches).map { batchIdx =>
-      val startIdx = batchIdx * batchSize
-      val endIdx = Math.min(startIdx + batchSize, numSamples)
-      trainX.slice(Axis[TrainSample] -> (startIdx until endIdx))
-    }
+    /*
+     * Training loop
+     * */
 
-    def miniBatchGradientDescent(batches: Seq[Tensor3[TrainSample, Height, Width, Float]], epoch: Int)(params: VAE.Params): VAE.Params =
-      batches.zipWithIndex.foldLeft(params) { case (currentParams, (batch, batchIdx)) =>
-        val batchKeys = dataKey.splitToTensor(Axis[TrainSample], batch.shape(Axis[TrainSample]))
-        val updatedParams = jitStep(batch, batchKeys, currentParams)
-        println(s"Epoch $epoch, Batch ${batchIdx + 1}/${batches.size} completed")
+    def batchLoss(key: Random.Key, trainData: Tensor3[Sample, Height, Width, Float], params: VAE.Params): Tensor0[Float] =
+      val vae = VAE(params)
+      val keys = key.splitToTensor(Axis[Sample], trainData.shape.dim(Axis[Sample])._2)
+      zipvmap(Axis[Sample])(trainData, keys) { (sample, key) =>
+        vae.loss(sample.ravel, Key(key.jaxValue))
+      }.mean
+
+    val jitBatchLoss = jit(batchLoss)
+
+    def batchGradientStep(key: Random.Key, trainData: Tensor3[Sample, Height, Width, Float], params: VAE.Params): VAE.Params =
+      val df = Autodiff.grad(params => batchLoss(key, trainData, params))
+      GradientDescent(df, Tensor0(learningRate)).step(params)
+
+    val jitBatchGradientStep = jitUpdate(batchGradientStep)
+
+    def trainBatch(key: Random.Key, trainData: Tensor3[Sample, Height, Width, Float])(initialParams: VAE.Params): VAE.Params =
+      val trainedParams = jitBatchGradientStep(key, trainData, initialParams)
+      trainedParams
+
+    def trainEpoch(key: Random.Key, epoch: Int, params: VAE.Params): VAE.Params =
+      val batcheskeys = key.split(batches.size)
+      batches.zip(batcheskeys).foldLeft(params) { case (batchParams, (batch, key)) =>
+        val updatedParams = trainBatch(key, batch)(batchParams)
         updatedParams
       }
 
-    val trainedParams = withLocalCleanup {
-      (0 until numEpochs).foldLeft(scaledInitialParams) { case (currentParams, epoch) =>
+    // run the loop
+    val keysForEpochs = dataKey.split(numEpochs)
+    val trainedParams = (0 until numEpochs).foldLeft(scaledInitialParams) { (params, epoch) =>
+      if epoch % 100 == 0 then
+        val lossValue = jitBatchLoss(keysForEpochs(epoch), testX, params)
+        println(s" Test loss in epoch $epoch: $lossValue")
+        dimwit.gc()
 
-        val epochParams = miniBatchGradientDescent(trainXBatches, epoch)(currentParams)
-
-        if epoch % 100 == 0 then
-          // Compute loss on first batch for monitoring
-          val sampleBatch = trainXBatches.head
-          val sampleKeys = dataKey.splitToTensor(Axis[TrainSample], sampleBatch.shape(Axis[TrainSample]))
-          val currentLoss = batchLoss(sampleBatch, sampleKeys)(epochParams)
-          println(s"Epoch $epoch completed, Loss: ${currentLoss}")
-          dimwit.gc()
-        else
-          println(s"Epoch $epoch completed")
-
-        epochParams
-      }
+      trainEpoch(keysForEpochs(epoch), epoch, params)
     }
+
+    /*
+     * Evaluation
+     * */
     val vae = VAE(trainedParams)
 
-    val reconstructed = trainX.vmap(Axis[TrainSample]) { sample =>
+    val reconstructed = testX.vmap(Axis[TestSample]) { sample =>
       val (mean, logVar) = vae.encoder(sample.ravel)
       val latent = reparametrize(mean, logVar, dataKey) // TODo Key management
       vae.decoder(latent)
     }
-    // would we need an unstack upoeration?
-    // that would be more intuitive than slicing in a loop
+    // TODO Unstacking would be great here instead of slice
     (0 until 10).map { i =>
-      val img = reconstructed.slice(Axis[TrainSample] -> i)
+      val img = reconstructed.slice(Axis[TestSample] -> i)
       val img2d = img.rearrange(
         (Axis[Height], Axis[Width]),
         (Axis[Height] -> 28, Axis[Width] -> 28)
@@ -240,6 +242,9 @@ object VAEExample:
       ImageVis.plotImage(img2d, s"./plots/vae_reconstructed-$i.html", "VAE Reconstructed Image")
     }
 
+    /*
+     * Sampling from the latent space
+     */
     val stdNormal = Normal.standardNormal(Shape(Axis[Latent] -> latentDim))
     val sampled = dataKey.splitvmap(Axis[Sample], 10)(key =>
       val z = stdNormal.sample(key)
