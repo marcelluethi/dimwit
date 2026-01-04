@@ -52,20 +52,38 @@ object Jit:
     * @return
     *   JIT compiled function with buffer donation
     */
-  def jitUpdate[T: ToPyTree](f: T => T): T => T =
+  def jitUpdate[InPyTree: ToPyTree, OutPyTree: ToPyTree](
+      f: InPyTree => OutPyTree
+  ): InPyTree => OutPyTree =
 
     // Python function that accepts a pytree
     val fpy = (pyTreePy: Jax.PyDynamic) =>
-      val pyTree = ToPyTree[T].fromPyTree(pyTreePy)
+      val pyTree = ToPyTree[InPyTree].fromPyTree(pyTreePy)
       val result = f(pyTree)
-      val tt = ToPyTree[T].toPyTree(result)
+      val tt = ToPyTree[OutPyTree].toPyTree(result)
       tt
 
     // Apply JIT compilation with buffer donation
     val jitted = Jax.jax_helper.jit_update_fn(fpy)
 
     // Return a function that converts Scala types to pytree and applies jitted function
-    (pyTree: T) =>
-      val pyTreePy = ToPyTree[T].toPyTree(pyTree)
+    (pyTree: InPyTree) =>
+      val pyTreePy = ToPyTree[InPyTree].toPyTree(pyTree)
       val res = jitted(pyTreePy)
-      ToPyTree[T].fromPyTree(res)
+      ToPyTree[OutPyTree].fromPyTree(res)
+
+  /** JIT compiles a 2-parameter update function with buffer donation on first parameter.
+    *
+    * The first parameter (typically model parameters) will be donated to allow memory reuse.
+    */
+  def jitUpdate[T1, T2, R](f: (T1, T2) => R)(using t1Tree: ToPyTree[T1], t2Tree: ToPyTree[T2], outTree: ToPyTree[R]): (T1, T2) => R =
+    val jitF = jitUpdate(f.tupled)
+    (t1, t2) => jitF((t1, t2))
+
+  /** JIT compiles a 3-parameter update function with buffer donation on first parameter.
+    *
+    * The first parameter (typically model parameters) will be donated to allow memory reuse.
+    */
+  def jitUpdate[T1, T2, T3, R](f: (T1, T2, T3) => R)(using t1Tree: ToPyTree[T1], t2Tree: ToPyTree[T2], t3Tree: ToPyTree[T3], outTree: ToPyTree[R]): (T1, T2, T3) => R =
+    val jitF = jitUpdate(f.tupled)
+    (t1, t2, t3) => jitF((t1, t2, t3))
