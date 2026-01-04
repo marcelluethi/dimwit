@@ -114,9 +114,9 @@ object VAEExample:
 
     val learningRate = 5e-4f
 
-    val numTestSamples = 256 // 9728
-    val batchSize = 512
-    val numSamples = batchSize * 20 // 59904
+    val numTestSamples = 128 // 9728
+    val batchSize = 256
+    val numSamples = batchSize * 50 // 59904
     val numEpochs = 800
     val latentDim = 20
 
@@ -174,14 +174,6 @@ object VAEExample:
     )
 
     /*
-     * split the training data into batches
-     * TODO, argument of chunk is called interval,
-     * but it is actually the number of chunks to create!
-     */
-    val batches = trainX.chunk(Axis[TrainSample], numSamples / batchSize)
-    println(s"Number of batches: ${batches.size}")
-
-    /*
      * Training loop
      * */
 
@@ -194,32 +186,37 @@ object VAEExample:
 
     val jitBatchLoss = jit(batchLoss)
 
-    def batchGradientStep(key: Random.Key, trainData: Tensor3[Sample, Height, Width, Float], params: VAE.Params): VAE.Params =
-      val df = Autodiff.grad(params => batchLoss(key, trainData, params))
+    val batches = trainX.chunk(Axis[TrainSample], numSamples / batchSize)
+    def trainBatchWithShuffle(key: Random.Key, batch: Tensor3[Sample, Height, Width, Float], params: VAE.Params): VAE.Params =
+      val (shuffleKey, trainKey) = key.split2()
+      val shuffledBatch = Random.shuffle(batch, Axis[Sample], shuffleKey)
+      val df = Autodiff.grad(params => batchLoss(trainKey, shuffledBatch, params))
       GradientDescent(df, Tensor0(learningRate)).step(params)
 
-    val jitBatchGradientStep = jitUpdate(batchGradientStep)
+    val jittedTrainBatch = jitUpdate(trainBatchWithShuffle)
 
     def trainBatch(key: Random.Key, trainData: Tensor3[Sample, Height, Width, Float])(initialParams: VAE.Params): VAE.Params =
-      val trainedParams = jitBatchGradientStep(key, trainData, initialParams)
+      val trainedParams = jittedTrainBatch(key, trainData, initialParams)
       trainedParams
 
     def trainEpoch(key: Random.Key, epoch: Int, params: VAE.Params): VAE.Params =
-      val batcheskeys = key.split(batches.size)
-      batches.zip(batcheskeys).foldLeft(params) { case (batchParams, (batch, key)) =>
-        val updatedParams = trainBatch(key, batch)(batchParams)
-        updatedParams
+      val batchKeys = key.split(batches.size)
+      batches.zip(batchKeys).foldLeft(params) { case (batchParams, (batch, key)) =>
+        jittedTrainBatch(key, batch, batchParams)
       }
 
     // run the loop
     val keysForEpochs = dataKey.split(numEpochs)
     val trainedParams = (0 until numEpochs).foldLeft(scaledInitialParams) { (params, epoch) =>
+
       if epoch % 100 == 0 then
         val lossValue = jitBatchLoss(keysForEpochs(epoch), testX, params)
         println(s" Test loss in epoch $epoch: $lossValue")
         dimwit.gc()
 
-      trainEpoch(keysForEpochs(epoch), epoch, params)
+      dimwit.withLocalCleanup {
+        trainEpoch(keysForEpochs(epoch), epoch, params)
+      }
     }
 
     /*
@@ -246,10 +243,10 @@ object VAEExample:
      * Sampling from the latent space
      */
     val stdNormal = Normal.standardNormal(Shape(Axis[Latent] -> latentDim))
-    val sampled = dataKey.splitvmap(Axis[Sample], 10)(key =>
+    val sampled = dataKey.splitvmap(Axis[Sample], 10) { key =>
       val z = stdNormal.sample(key)
       vae.decoder(z)
-    )
+    }
     (0 until sampled.shape.dim(Axis[Sample])._2).map { i =>
       val img = sampled.slice(Axis[Sample] -> i)
       val img2d = img.rearrange(

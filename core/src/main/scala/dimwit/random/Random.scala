@@ -64,3 +64,39 @@ object Random:
   // not a primitive type in  JAX.
   extension (tensorKey: Tensor0[Key])
     def item: Key = Key(tensorKey.jaxValue)
+
+  /** Generate a random permutation of indices from 0 to n-1.
+    *
+    * @param axis
+    *   The axis label for the result
+    * @param n
+    *   The length of the permutation
+    * @param key
+    *   The random key
+    * @return
+    *   A 1D tensor containing a random permutation of [0, 1, ..., n-1]
+    */
+  def permutation[L: Label](axis: Axis[L], n: Int)(key: Key): Tensor1[L, Int] =
+    Tensor.fromPy(VType[Int])(Jax.jrandom.permutation(key.jaxKey, n))
+
+  /** Shuffle a tensor along a given axis by randomly permuting elements.
+    *
+    * @param tensor
+    *   The tensor to shuffle
+    * @param axis
+    *   The axis along which to shuffle
+    * @param key
+    *   The random key
+    * @return
+    *   A new tensor with elements shuffled along the specified axis
+    */
+  def shuffle[T <: Tuple: Labels, V, L: Label](
+      tensor: Tensor[T, V],
+      axis: Axis[L],
+      key: Key
+  )(using axisIndex: AxisIndex[T, L]): Tensor[T, V] =
+    val axisSize = tensor.shape.dimensions(axisIndex.value)
+    val indices = Tensor.fromPy[Tuple1[L], Int](VType[Int])(
+      Jax.jrandom.permutation(key.jaxKey, axisSize)
+    )
+    Tensor(Jax.jnp.take(tensor.jaxValue, indices.jaxValue, axis = axisIndex.value))
