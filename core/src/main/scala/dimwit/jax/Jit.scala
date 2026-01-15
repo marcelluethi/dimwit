@@ -210,10 +210,57 @@ object JitDonating:
 
 object JitDonatingUnsafe:
 
-  def jitDonatingUnsafe[R: ToPyTree](f: R => R) = toPyJit(f, Map("donate_argnums" -> Tuple1(0)))
+// Track donated objects to prevent reuse (uses identity-based comparison)
+  private val donatedObjects =
+    java.util.Collections.synchronizedMap(
+      new java.util.IdentityHashMap[AnyRef, String]()
+    )
 
-  def jitDonatingUnsafe[T1: ToPyTree, R: ToPyTree](f: (T1, R) => R) = toPyJit(f, Map("donate_argnums" -> Tuple1(1)))
+  private def checkNotDonated(obj: Any, context: String): Unit =
+    obj match
+      case ref: AnyRef =>
+        val previousContext = donatedObjects.get(ref)
+        if previousContext != null then
+          throw new IllegalStateException(
+            s"Cannot reuse donated buffer. Object was already donated in: $previousContext. " +
+              s"Current context: $context. " +
+              s"Use Jit.jitDonating instead for safe buffer donation with explicit lifecycle management."
+          )
+      case _ => ()
 
-  def jitDonatingUnsafe[T1: ToPyTree, T2: ToPyTree, R: ToPyTree](f: (T1, T2, R) => R) = toPyJit(f, Map("donate_argnums" -> Tuple1(2)))
+  private def markAsDonated(obj: Any, context: String): Unit =
+    obj match
+      case ref: AnyRef => donatedObjects.put(ref, context)
+      case _           => ()
 
-  def jitDonatingUnsafe[T1: ToPyTree, T2: ToPyTree, T3: ToPyTree, R: ToPyTree](f: (T1, T2, T3, R) => R) = toPyJit(f, Map("donate_argnums" -> Tuple1(2)))
+  def jitDonatingUnsafe[R: ToPyTree](f: R => R): R => R =
+    val jitted = toPyJit(f, Map("donate_argnums" -> Tuple1(0)))
+    (r: R) =>
+      checkNotDonated(r, s"jitDonatingUnsafe[R](f: R => R)")
+      val result = jitted(r)
+      markAsDonated(r, s"jitDonatingUnsafe[R](f: R => R)")
+      result
+
+  def jitDonatingUnsafe[T1: ToPyTree, R: ToPyTree](f: (T1, R) => R): (T1, R) => R =
+    val jitted = toPyJit(f, Map("donate_argnums" -> Tuple1(1)))
+    (t1: T1, r: R) =>
+      checkNotDonated(r, s"jitDonatingUnsafe[T1, R](f: (T1, R) => R)")
+      val result = jitted(t1, r)
+      markAsDonated(r, s"jitDonatingUnsafe[T1, R](f: (T1, R) => R)")
+      result
+
+  def jitDonatingUnsafe[T1: ToPyTree, T2: ToPyTree, R: ToPyTree](f: (T1, T2, R) => R): (T1, T2, R) => R =
+    val jitted = toPyJit(f, Map("donate_argnums" -> Tuple1(2)))
+    (t1: T1, t2: T2, r: R) =>
+      checkNotDonated(r, s"jitDonatingUnsafe[T1, T2, R](f: (T1, T2, R) => R)")
+      val result = jitted(t1, t2, r)
+      markAsDonated(r, s"jitDonatingUnsafe[T1, T2, R](f: (T1, T2, R) => R)")
+      result
+
+  def jitDonatingUnsafe[T1: ToPyTree, T2: ToPyTree, T3: ToPyTree, R: ToPyTree](f: (T1, T2, T3, R) => R): (T1, T2, T3, R) => R =
+    val jitted = toPyJit(f, Map("donate_argnums" -> Tuple1(3)))
+    (t1: T1, t2: T2, t3: T3, r: R) =>
+      checkNotDonated(r, s"jitDonatingUnsafe[T1, T2, T3, R](f: (T1, T2, T3, R) => R)")
+      val result = jitted(t1, t2, t3, r)
+      markAsDonated(r, s"jitDonatingUnsafe[T1, T2, T3, R](f: (T1, T2, T3, R) => R)")
+      result
