@@ -212,59 +212,16 @@ object TupleHelpers:
         ${ failImpl[A, SourceShape] }
   export TensorEvidence.*
 
-  trait PrimeRest[Fixed <: Tuple, Incoming <: Tuple]:
-    type Out <: Tuple
-
-  trait PrimeRestLowPriority:
-    /** If nothing found, we can't proof Member (e.g. for generics), just assume they are different. */
-    given assumeAbsent[Fixed <: Tuple, H, T <: Tuple, TailOut <: Tuple](using
-        tail: PrimeRest.Aux[Fixed, T, TailOut]
-    ): PrimeRest.Aux[Fixed, H *: T, H *: TailOut] =
-      new PrimeRest[Fixed, H *: T]:
-        type Out = H *: TailOut
-
-  object PrimeRest extends PrimeRestLowPriority:
-    type Aux[Fixed <: Tuple, Incoming <: Tuple, O <: Tuple] =
-      PrimeRest[Fixed, Incoming] { type Out = O }
-
-    given empty[Fixed <: Tuple]: PrimeRest.Aux[Fixed, EmptyTuple, EmptyTuple] =
-      new PrimeRest[Fixed, EmptyTuple]:
-        type Out = EmptyTuple
-
-    given present[Fixed <: Tuple, H, T <: Tuple, TailOut <: Tuple](using
-        ev: Member[H, Fixed] =:= true,
-        tail: PrimeRest.Aux[Fixed, T, TailOut]
-    ): PrimeRest.Aux[Fixed, H *: T, Prime[H] *: TailOut] =
-      new PrimeRest[Fixed, H *: T]:
-        type Out = Prime[H] *: TailOut
-
-    given absent[Fixed <: Tuple, H, T <: Tuple, TailOut <: Tuple](using
-        ev: Member[H, Fixed] =:= false,
-        tail: PrimeRest.Aux[Fixed, T, TailOut]
-    ): PrimeRest.Aux[Fixed, H *: T, H *: TailOut] =
-      new PrimeRest[Fixed, H *: T]:
-        type Out = H *: TailOut
-
-  trait PrimeConcat[R1 <: Tuple, R2 <: Tuple]:
-    type Out <: Tuple
-
-  object PrimeConcat:
-    type Aux[R1 <: Tuple, R2 <: Tuple, O <: Tuple] =
-      PrimeConcat[R1, R2] { type Out = O }
-
-    given [R1 <: Tuple, R2 <: Tuple, Suffix <: Tuple](using
-        rest: PrimeRest.Aux[R1, R2, Suffix]
-    ): PrimeConcat.Aux[R1, R2, Tuple.Concat[R1, Suffix]] =
-      new PrimeConcat[R1, R2]:
-        type Out = Tuple.Concat[R1, Suffix]
-
-  // Match type versions for compile-time reduction
-  // PrimeRest: Transform tuple elements, adding Prime[H] if H is in Fixed
-  type PrimeRestType[Fixed <: Tuple, Incoming <: Tuple] <: Tuple = Incoming match
+  /** Transforms tuple elements of `Incoming`, priming any that are also present in
+    * `Fixed` (see [[dimwit.Prime]]).
+    *
+    * Only reduces once every label involved is closed - see [[dimwit.tensor.Label.derived]].
+    */
+  type PrimeRest[Fixed <: Tuple, Incoming <: Tuple] <: Tuple = Incoming match
     case EmptyTuple => EmptyTuple
     case h *: t     => Member[h, Fixed] match
-        case true  => Prime[h] *: PrimeRestType[Fixed, t]
-        case false => h *: PrimeRestType[Fixed, t]
+        case true  => Prime[h] *: PrimeRest[Fixed, t]
+        case false => h *: PrimeRest[Fixed, t]
 
-  // PrimeConcat: Concatenate R1 with primed version of R2
-  type PrimeConcatType[R1 <: Tuple, R2 <: Tuple] = Tuple.Concat[R1, PrimeRestType[R1, R2]]
+  /** Concatenates `R1` with `R2`, priming any axis of `R2` that collides with one in `R1`. */
+  type PrimeConcat[R1 <: Tuple, R2 <: Tuple] = Tuple.Concat[R1, PrimeRest[R1, R2]]

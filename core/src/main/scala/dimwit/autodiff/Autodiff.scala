@@ -5,7 +5,7 @@ import dimwit.jax.Jax
 import dimwit.tensor.Tensor
 import dimwit.tensor.Tensor0
 import dimwit.tensor.TensorOps.IsFloating
-import dimwit.tensor.TupleHelpers.PrimeConcatType
+import dimwit.tensor.TupleHelpers.PrimeConcat
 import dimwit.tensortree.TensorTree
 import me.shadaj.scalapy.py
 
@@ -20,7 +20,7 @@ object Autodiff:
   type GradientTensorVsInput[In, OutShape <: Tuple, V] = In match
     case EmptyTuple      => EmptyTuple
     case h *: t          => GradientTensorVsInput[h, OutShape, V] *: GradientTensorVsInput[t, OutShape, V]
-    case Tensor[inS, v2] => Tensor[PrimeConcatType[OutShape, inS], V]
+    case Tensor[inS, v2] => Tensor[PrimeConcat[OutShape, inS], V]
 
   type Hessian[In] = HessianProduct[In, In]
 

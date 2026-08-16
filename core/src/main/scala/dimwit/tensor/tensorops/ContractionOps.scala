@@ -23,9 +23,8 @@ object ContractionOps:
       * Automatically primes the labels of the resulting tensor to avoid label collisions.
       */
     def outerProduct[OtherShape <: Tuple: Labels](other: Tensor[OtherShape, V])(using
-        primeConcat: PrimeConcat[T, OtherShape],
-        labels: Labels[primeConcat.Out]
-    ): Tensor[primeConcat.Out, V] = Tensor(
+        labels: Labels[PrimeConcat[T, OtherShape]]
+    ): Tensor[PrimeConcat[T, OtherShape], V] = Tensor(
       Jax.jnp.tensordot(tensor.jaxValue, other.jaxValue, axes = 0) // generalized outer product
     )
 
@@ -42,9 +41,8 @@ object ContractionOps:
         ev: AxisRemover[T, ContractAxis],
         evOther: AxisRemover[OtherShape, ContractAxis]
     )(using
-        primeConcat: PrimeConcat[ev.RemainingAxes, evOther.RemainingAxes],
-        labelsOut: Labels[primeConcat.Out]
-    ): Tensor[primeConcat.Out, V] =
+        labelsOut: Labels[PrimeConcat[ev.RemainingAxes, evOther.RemainingAxes]]
+    ): Tensor[PrimeConcat[ev.RemainingAxes, evOther.RemainingAxes], V] =
       val axesTuple1 = Jax.Dynamic.global.tuple(Seq(ev.index).toPythonProxy)
       val axesTuple2 = Jax.Dynamic.global.tuple(Seq(evOther.index).toPythonProxy)
       val axesPair = Jax.Dynamic.global.tuple(Seq(axesTuple1, axesTuple2).toPythonProxy)
@@ -73,9 +71,8 @@ object ContractionOps:
         ev: AxisRemover[T, ContractAxisA],
         evOther: AxisRemover[OtherShape, ContractAxisB]
     )(using
-        primeConcat: PrimeConcat[ev.RemainingAxes, evOther.RemainingAxes],
-        outLabels: Labels[primeConcat.Out]
-    ): Tensor[primeConcat.Out, V] =
+        outLabels: Labels[PrimeConcat[ev.RemainingAxes, evOther.RemainingAxes]]
+    ): Tensor[PrimeConcat[ev.RemainingAxes, evOther.RemainingAxes], V] =
       val axesTuple1 = Jax.Dynamic.global.tuple(Seq(ev.index).toPythonProxy)
       val axesTuple2 = Jax.Dynamic.global.tuple(Seq(evOther.index).toPythonProxy)
       val axesPair = Jax.Dynamic.global.tuple(Seq(axesTuple1, axesTuple2).toPythonProxy)
