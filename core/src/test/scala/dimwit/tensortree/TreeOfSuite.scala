@@ -255,7 +255,7 @@ class TreeOfSuite extends DimwitTest:
   describe("mapLeaves"):
 
     it("Calculate norm over tree structure"):
-      trait Norm derives Label
+      sealed trait Norm derives Label
       case class Params(val w: Tensor1[A, Float32], val b: Tensor0[Float32])
       val params1 = Params(Tensor1(Axis[A]).fromArray(Array(0.1f, 0.2f, 0.3f)), Tensor0(0))
       val leaveNorms = stack(

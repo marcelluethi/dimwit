@@ -16,8 +16,8 @@ import dimwit.Autodiff.grad // TODO replace with cleaner import after PR is merg
 import dimwit.optimizer.GradientDescent // TODO replace with cleaner import after refactoring 
 
 // labels for tensor axes
-trait Batch derives Label
-trait Feature derives Label
+sealed trait Batch derives Label
+sealed trait Feature derives Label
 
 // parameters are explicitly defined and usually bundled in a case class
 case class Params(w: Tensor1[Feature, Float32], b: Tensor0[Float32]) derives TensorTree
@@ -92,8 +92,8 @@ dimwit.initialize()
 ```
 
 ```scala
-trait Batch derives Label
-trait Feature derives Label
+sealed trait Batch derives Label
+sealed trait Feature derives Label
 ```
 
 To create an axis, we use the `Axis` class, which takes a label as a type parameter:
@@ -193,8 +193,8 @@ DimWit provides the usual arithmetic operations on tensors, such as addition, mu
 
 
 ```scala
-trait A derives Label
-trait B derives Label
+sealed trait A derives Label
+sealed trait B derives Label
 val tensor1 = Tensor(Shape(Axis[A] -> 3, Axis[B] -> 2)).fill(1.0f)
 val tensor2 = Tensor(Shape(Axis[A] -> 3, Axis[B] -> 2)).fill(2.0f)
 val sum = tensor1 + tensor2
@@ -203,7 +203,7 @@ val sum = tensor1 + tensor2
 However, if we try to add two tensors with incompatible shapes, we will get a compile-time error:
 
 ```scala
-trait C derives Label
+sealed trait C derives Label
 val tensor1 = Tensor(Shape(Axis[A] -> 3, Axis[B] -> 2)).fill(1.0f)
 val tensor3 = Tensor(Shape(Axis[A] -> 3, Axis[C] -> 2)).fill(2.0f)
 tensor1 + tensor3 
@@ -233,7 +233,7 @@ Another key difference between DimWit and other tensor libraries is the broadcas
 is often a source of bugs, DimWit does not allow it. The following code will not compile, even though the shapes of the tensors are compatible for broadcasting:
 
 ```scala
-trait C derives Label
+sealed trait C derives Label
 val tensor3 = Tensor(Shape(Axis[A] -> 3)).fill(1.0f)
 tensor1 + tensor3
 // error:
@@ -250,7 +250,7 @@ tensor1 + tensor3
 If we want to use broadcasting, we have to use the explicit broadcasting versions of the operations, which are suffixed with a `!`.
 The following operation compiles successfully:
 ```scala
-trait C derives Label
+sealed trait C derives Label
 val tensor3 = Tensor(Shape(Axis[A] -> 3)).fill(1.0f)
 tensor1 +! tensor3
 ```
@@ -272,9 +272,9 @@ val sumOverA : Tensor1[B, Float32] = tensor1.sum(Axis[A])
 DimWit provides several operations to transform the shape of tensors, without changing the underlying data. 
 We consider in the following always the following 3D tensor as an example:
 ```scala
-trait A derives Label
-trait B derives Label
-trait C derives Label
+sealed trait A derives Label
+sealed trait B derives Label
+sealed trait C derives Label
 val tensor = Tensor(Shape(Axis[A] -> 3, Axis[B] -> 2, Axis[C] -> 4)).fill(1.0f)
 ``` 
 
@@ -363,9 +363,9 @@ Let's take again the following tensor as an example:
 
 
 ```scala
-trait A derives Label
-trait B derives Label
-trait C derives Label
+sealed trait A derives Label
+sealed trait B derives Label
+sealed trait C derives Label
 val tensor = Tensor(Shape(Axis[A] -> 3, Axis[B] -> 2, Axis[C] -> 4)).fill(1.0f)
 ``` 
 

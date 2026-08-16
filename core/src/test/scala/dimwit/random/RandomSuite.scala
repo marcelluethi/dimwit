@@ -7,8 +7,8 @@ import me.shadaj.scalapy.py
 import dimwit.stats.Normal
 
 class RandomSuite extends DimwitTest:
-  trait A derives Label
-  trait Samples derives Label
+  sealed trait A derives Label
+  sealed trait Samples derives Label
 
   describe("splitToTuple creates tuple"):
     val key = Random.Key(42)
@@ -87,8 +87,8 @@ class RandomSuite extends DimwitTest:
 
   it("permutation with take can shuffle tensor rows"):
     val key = Random.Key(101112)
-    trait Row derives Label
-    trait Col derives Label
+    sealed trait Row derives Label
+    sealed trait Col derives Label
 
     // Create a 2D tensor with distinct values to verify shuffling
     val original = Tensor2(Axis[Row], Axis[Col]).fromArray(Array(

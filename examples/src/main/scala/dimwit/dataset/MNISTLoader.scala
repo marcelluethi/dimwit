@@ -9,11 +9,11 @@ import scala.util.Try
 
 object MNISTLoader:
 
-  trait Sample derives Label
-  trait TrainSample extends Sample derives Label
-  trait TestSample extends Sample derives Label
-  trait Height derives Label
-  trait Width derives Label
+  sealed trait Sample derives Label
+  sealed trait TrainSample extends Sample derives Label
+  sealed trait TestSample extends Sample derives Label
+  sealed trait Height derives Label
+  sealed trait Width derives Label
 
   private val pythonLoader = py.eval("lambda b64, shape: __import__('jax').numpy.array(__import__('numpy').frombuffer(__import__('base64').b64decode(b64), dtype=__import__('numpy').uint8).reshape(shape).astype(__import__('numpy').int32))")
 

@@ -70,6 +70,30 @@ class AutodiffSuite extends DimwitTest:
         val x = Tensor1(Axis[A]).fromArray(Array(1.0f, 1.0f))
         jf(x) should approxEqual(Tensor2.eye(x.extent(Axis[A]), x.vtype) *! 2.0f)
 
+    describe("input and output axes differ"):
+      // These exercise GradientTensorVsInput's Tensor case, which asks whether each
+      // input axis is a Member of the output shape. Member and Swap share the same
+      // match-type disjointness requirement, so this is stuck exactly when Swap is.
+
+      it("non-square jacobian: Tensor1[A] => Tensor1[B]"):
+        def f(x: Tensor1[A, Float32]): Tensor1[B, Float32] = x.relabel(Axis[A] -> Axis[B]) *! 2.0f
+        val jf = Autodiff.jacobian(f)
+
+        val x = Tensor1(Axis[A]).fromArray(Array(1.0f, 1.0f))
+        jf(x).axes shouldBe List("B", "A")
+        jf(x) should approxEqual((Tensor2.eye(x.extent(Axis[A])) *! 2.0f).relabelAll((Axis[B], Axis[A])))
+
+      it("primes an input axis that collides with an output axis"):
+        def f(x: Tensor2[A, B, Float32]): Tensor1[B, Float32] = x.sum(Axis[A])
+        val jf = Autodiff.jacobian(f)
+
+        val x = Tensor(Shape(Axis[A] -> 3, Axis[B] -> 2)).fill(1f)
+        val jac = jf(x)
+        jac.axes shouldBe List("B", "A", "B'")
+        jac.shape(Axis[A]) shouldBe 3
+        // d(sum over A)_b / dx(a, b') is 1 exactly when b == b', for every a
+        jac.sum shouldEqual Tensor0(6.0f)
+
   describe("jacRev / jacFwd"):
 
     // setup engines to test both modes in the same way

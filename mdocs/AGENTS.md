@@ -40,16 +40,16 @@ DimWit uses **type-level dimension labels** to track tensor shapes at compile ti
 import dimwit.*
 
 // Define custom dimension labels using Scala 3 derives clause
-trait Batch derives Label
-trait Feature derives Label
-trait Hidden derives Label
-trait Output derives Label
+sealed trait Batch derives Label
+sealed trait Feature derives Label
+sealed trait Hidden derives Label
+sealed trait Output derives Label
 
 // Pre-defined test labels (available in test scope)
-trait A derives Label
-trait B derives Label
-trait C derives Label
-trait D derives Label
+sealed trait A derives Label
+sealed trait B derives Label
+sealed trait C derives Label
+sealed trait D derives Label
 ```
 
 ### Shape Construction
@@ -177,10 +177,10 @@ Operations applied element-by-element to tensor(s).
 ```scala mdoc:reset:silent
 import dimwit.*
 
-trait A derives Label
-trait B derives Label
-trait C derives Label
-trait D derives Label
+sealed trait A derives Label
+sealed trait B derives Label
+sealed trait C derives Label
+sealed trait D derives Label
 val t = Tensor2(Axis[A], Axis[B]).fromArray(Array(Array(1.0f, 2.0f), Array(3.0f, 4.0f)))
 
 // Arithmetic
@@ -291,10 +291,10 @@ Dot products and matrix multiplication.
 ```scala mdoc:reset:silent
 import dimwit.*
 
-trait A derives Label
-trait B derives Label
-trait C derives Label
-trait D derives Label
+sealed trait A derives Label
+sealed trait B derives Label
+sealed trait C derives Label
+sealed trait D derives Label
 
 // Dot product (vector · vector)
 val v1 = Tensor1(Axis[A]).fromArray(Array(1.0f, 2.0f, 3.0f))
@@ -375,8 +375,8 @@ val concatenated = concatenate(t1, t2, Axis[A])
 ```scala mdoc:reset:silent
 import dimwit.*
 
-trait Batch derives Label
-trait Feature derives Label
+sealed trait Batch derives Label
+sealed trait Feature derives Label
 val data = Tensor2(Axis[Batch], Axis[Feature]).fromArray(
   Array(
     Array(1.0f, 2.0f, 3.0f),
@@ -421,8 +421,8 @@ val wrong = t.vmap(Axis[A])(wrongFunc)
 ```scala mdoc:reset:silent
 import dimwit.*
 
-trait A derives Label
-trait B derives Label
+sealed trait A derives Label
+sealed trait B derives Label
 
 val t1 = Tensor2(Axis[A], Axis[B]).fromArray(Array(Array(1.0f, 2.0f), Array(3.0f, 4.0f)))
 val t2 = Tensor2(Axis[A], Axis[B]).fromArray(Array(Array(10.0f, 20.0f), Array(30.0f, 40.0f)))
@@ -466,8 +466,8 @@ val same = matrix.vapply(Axis[A])(identity)
 ```scala mdoc:reset:silent
 import dimwit.*
 
-trait A derives Label
-trait B derives Label
+sealed trait A derives Label
+sealed trait B derives Label
 
 val t = Tensor2(Axis[A], Axis[B]).fromArray(Array(Array(1.0f, 2.0f, 3.0f), Array(4.0f, 5.0f, 6.0f)))
 
@@ -491,7 +491,7 @@ DimWit provides automatic differentiation via `Autodiff.grad`.
 import dimwit.*
 import dimwit.autodiff.Autodiff
 
-trait A derives Label
+sealed trait A derives Label
 import dimwit.autodiff.Autodiff
 
 // Scalar function: f(x) = x²
@@ -553,8 +553,8 @@ println(s"∂f/∂y = ${yGrad}")  // [12.0]
 import dimwit.*
 import dimwit.autodiff.*
 
-trait Batch derives Label
-trait Feature derives Label
+sealed trait Batch derives Label
+sealed trait Feature derives Label
 
 // Gradient works seamlessly with vmap
 def batched(x: Tensor2[Batch, Feature, Float32]): Tensor0[Float32] =
@@ -576,8 +576,8 @@ import dimwit.*
 import dimwit.autodiff.Autodiff
 import dimwit.tensortree.TensorTree
 
-trait Feature derives Label
-trait Hidden derives Label
+sealed trait Feature derives Label
+sealed trait Hidden derives Label
 
 case class LinearParams(
   weight: Tensor2[Feature, Hidden, Float32],
@@ -622,7 +622,7 @@ val wrong = Autodiff.grad(intFunc)
 import dimwit.*
 import dimwit.autodiff.*
 
-trait A derives Label
+sealed trait A derives Label
 
 // Jacobian of f: R² -> R², f(x) = 2x
 def linearMap(x: Tensor1[A, Float32]): Tensor1[A, Float32] = x *! Tensor0(2.0f)
@@ -643,8 +643,8 @@ val jacFwd = Autodiff.jacFwd(linearMap)
 import dimwit.*
 import dimwit.autodiff.*
 
-trait A derives Label
-trait B derives Label
+sealed trait A derives Label
+sealed trait B derives Label
 
 // Hessian of f: R -> R, f(x) = x²
 val hScalar = Autodiff.hessian((x: Tensor0[Float32]) => x * x)
@@ -681,8 +681,8 @@ import dimwit.Conversions.given
 import dimwit.optimizer.{GradientDescent, GradientOptimizer}
 import dimwit.random.Random
 
-trait Feature derives Label
-trait Batch derives Label
+sealed trait Feature derives Label
+sealed trait Batch derives Label
 
 // Define model parameters
 case class SimpleModelParams(w: Tensor1[Feature, Float32], b: Tensor0[Float32])
@@ -744,8 +744,8 @@ val trainedLion = lionOptimizer.iterate(initModelParams)(gradFunc)
 import dimwit.Conversions.given // enables implicit conversion from Float to Tensor[V]
 
 // Define problem dimensions
-trait Sample derives Label
-trait InputDim derives Label
+sealed trait Sample derives Label
+sealed trait InputDim derives Label
 
 // Generate synthetic data: y = 2x + 1 + noise
 val numSamples = 100
@@ -798,7 +798,7 @@ JIT (Just-In-Time) compilation speeds up repeated function calls.
 import dimwit.*
 import dimwit.jax.Jit
 
-trait A derives Label
+sealed trait A derives Label
 
 // Define a complex function
 def complexComputation(x: Tensor1[A, Float32]): Tensor1[A, Float32] =
@@ -872,7 +872,7 @@ println(s"Shuffled: ${shuffled}")
 ### Random Key Splitting with vmap
 
 ```scala mdoc:silent
-trait B derives Label
+sealed trait B derives Label
 
 // Split keys in parallel
 val batchKey = Random.Key(123)
@@ -892,10 +892,10 @@ This section demonstrates **compile-time** and **runtime** errors to help coding
 ```scala mdoc:reset
 import dimwit.*
 
-trait A derives Label
-trait B derives Label
-trait C derives Label
-trait D derives Label
+sealed trait A derives Label
+sealed trait B derives Label
+sealed trait C derives Label
+sealed trait D derives Label
 ```
 
 ```scala mdoc:fail
@@ -989,9 +989,9 @@ val wrong = Autodiff.grad(nonScalar)  // Use jacobian instead
 import dimwit.*
 
 // GOOD: Semantic labels
-trait Batch derives Label
-trait SeqLen derives Label
-trait EmbedDim derives Label
+sealed trait Batch derives Label
+sealed trait SeqLen derives Label
+sealed trait EmbedDim derives Label
 
 val embeddings = Tensor(Shape3(Axis[Batch] -> 8, Axis[SeqLen] -> 128, Axis[EmbedDim] -> 64)).fill(0.0f)
 
@@ -1001,7 +1001,7 @@ val embeddings = Tensor(Shape3(Axis[Batch] -> 8, Axis[SeqLen] -> 128, Axis[Embed
 ### 2. Use Type Aliases for Clarity
 
 ```scala mdoc:silent
-trait Feature derives Label
+sealed trait Feature derives Label
 
 // GOOD: Clear type signatures
 def process(input: Tensor2[Batch, Feature, Float32]): Tensor1[Batch, Float32] = 
@@ -1013,9 +1013,9 @@ def process(input: Tensor2[Batch, Feature, Float32]): Tensor1[Batch, Float32] =
 ### 3. Prefer Case Classes for Parameters
 
 ```scala mdoc:silent
-trait InputDim derives Label
-trait Hidden derives Label
-trait Output derives Label
+sealed trait InputDim derives Label
+sealed trait Hidden derives Label
+sealed trait Output derives Label
 
 // GOOD: Structured parameters with TensorTree
 case class ModelParams(
@@ -1030,7 +1030,7 @@ case class ModelParams(
 ### 4. Use Broadcast Operators Explicitly
 
 ```scala mdoc:silent
-trait Sample derives Label
+sealed trait Sample derives Label
 
 val data = Tensor1(Axis[Sample]).fromArray(Array(1.0f, 2.0f, 3.0f))
 val mean = data.mean
@@ -1048,7 +1048,7 @@ val normalized = (data -! mean) /! std
 import dimwit.random.Random
 import dimwit.stats.{Normal, Uniform}
 
-trait A derives Label
+sealed trait A derives Label
 
 val rootKey = Random.Key(42)
 val normalDist = Normal(loc = Tensor0(0.0f), scale = Tensor0(1.0f))
@@ -1067,7 +1067,7 @@ val sample2 = uniformDist.sample(key2)
 ```scala mdoc:silent
 import dimwit.jax.Jit.jit
 
-trait Input derives Label
+sealed trait Input derives Label
 
 val simpleFunc = (x: Tensor1[Input, Float32]) => x *! Tensor0(2.0f)
 

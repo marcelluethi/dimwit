@@ -9,10 +9,10 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Convolution 1D"):
 
     it("should perform 1D convolution with correct output shape"):
-      trait Batch derives Label
-      trait Length derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Length derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
       val inputBatched = Tensor(
         Shape(
           Axis[Batch] -> 2,
@@ -38,10 +38,10 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[OutChannels]) shouldBe 4
 
     it("should perform 1D convolution with stride > 1"):
-      trait Batch derives Label
-      trait Length derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Length derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       val inputBatched = Tensor(
         Shape(
@@ -69,11 +69,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Convolution 2D"):
 
     it("should perform 2D convolution with correct output shape"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input: (batch=2, height=8, width=8, in_channels=3)
       val inputBatched = Tensor(
@@ -104,11 +104,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[OutChannels]) shouldBe 16
 
     it("should perform 2D convolution with stride=2"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       val inputBatched = Tensor(
         Shape(
@@ -137,11 +137,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[OutChannels]) shouldBe 8
 
     it("should perform 2D convolution with stride=(1, 2)"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       val inputBatched = Tensor(
         Shape(
@@ -169,11 +169,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[OutChannels]) shouldBe 4
 
     it("should compute correct convolution values for 2D case"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Create a simple 3x3 input with known values (1 batch, 1 channel)
       // Pattern:
@@ -227,10 +227,10 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Convolution validation"):
 
     it("should require matching spatial labels"):
-      trait A derives Label
-      trait B derives Label
-      trait In derives Label
-      trait Out derives Label
+      sealed trait A derives Label
+      sealed trait B derives Label
+      sealed trait In derives Label
+      sealed trait Out derives Label
 
       val input = Tensor(Shape(Axis[A] -> 3, Axis[In] -> 3)).fill(1.0f)
       // Kernel with different spatial label B instead of A won't compile
@@ -242,10 +242,10 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Transpose Convolution 1D"):
 
     it("should perform 1D transpose convolution with correct output shape"):
-      trait Batch derives Label
-      trait Length derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Length derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input has OutChannels (transpose conv maps from output space to input space)
       val inputBatched = Tensor(
@@ -273,10 +273,10 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[InChannels]) shouldBe 3
 
     it("should perform 1D transpose convolution with stride > 1 (upsampling)"):
-      trait Batch derives Label
-      trait Length derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Length derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input has OutChannels
       val inputBatched = Tensor(
@@ -307,11 +307,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Transpose Convolution 2D"):
 
     it("should perform 2D transpose convolution with correct output shape"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input: (batch=2, height=8, width=8, out_channels=16) - transposeConv input space
       val inputBatched = Tensor(
@@ -343,11 +343,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[InChannels]) shouldBe 3
 
     it("should perform 2D transpose convolution with stride=2 (upsampling)"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input has OutChannels
       val inputBatched = Tensor(
@@ -378,11 +378,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[InChannels]) shouldBe 3
 
     it("should allow explicit output shape specification"):
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input has OutChannels
       val inputBatched = Tensor(
@@ -425,11 +425,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
     it("should satisfy dotproduct equality: <conv(x, k), y> = <x, transposeConv2d(y, k)>"):
       // This test verifies the mathematical property that transpose convolution
       // is the adjoint (transpose) of convolution in the sense of inner products
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       import dimwit.random.Random
 
@@ -486,11 +486,11 @@ class TensorOpsConvolutionSuite extends DimwitTest:
 
     it("should satisfy dotproduct equality with stride=2"):
       // Verify the adjoint property also holds with strided convolution
-      trait Batch derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       import dimwit.random.Random
 
@@ -545,12 +545,12 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Convolution 3D"):
 
     it("should perform 3D convolution with correct output shape"):
-      trait Batch derives Label
-      trait Depth derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Depth derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input: (batch=2, depth=8, height=8, width=8, in_channels=3)
       val inputBatched = Tensor(
@@ -583,12 +583,12 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[OutChannels]) shouldBe 16
 
     it("should perform 3D convolution with stride=2"):
-      trait Batch derives Label
-      trait Depth derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Depth derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       val inputBatched = Tensor(
         Shape(
@@ -622,12 +622,12 @@ class TensorOpsConvolutionSuite extends DimwitTest:
   describe("Transpose Convolution 3D"):
 
     it("should perform 3D transpose convolution with correct output shape"):
-      trait Batch derives Label
-      trait Depth derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Depth derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       // Input: (batch=2, depth=8, height=8, width=8, out_channels=16)
       val inputBatched = Tensor(
@@ -660,12 +660,12 @@ class TensorOpsConvolutionSuite extends DimwitTest:
       output.shape(Axis[InChannels]) shouldBe 3
 
     it("should satisfy dotproduct equality: <conv3d(x, k), y> = <x, transposeConv3d(y, k)>"):
-      trait Batch derives Label
-      trait Depth derives Label
-      trait Height derives Label
-      trait Width derives Label
-      trait InChannels derives Label
-      trait OutChannels derives Label
+      sealed trait Batch derives Label
+      sealed trait Depth derives Label
+      sealed trait Height derives Label
+      sealed trait Width derives Label
+      sealed trait InChannels derives Label
+      sealed trait OutChannels derives Label
 
       import dimwit.random.Random
 

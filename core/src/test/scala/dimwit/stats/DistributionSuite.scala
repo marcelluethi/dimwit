@@ -13,8 +13,8 @@ import dimwit.python.PyBridge.{liftPyTensor0, liftPyTensor1}
 
 class DistributionSuite extends DimwitTest:
 
-  trait A derives Label
-  trait Samples derives Label
+  sealed trait A derives Label
+  sealed trait Samples derives Label
 
   describe("Normal Distribution"):
     it("logProbs matches JAX"):

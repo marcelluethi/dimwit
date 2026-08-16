@@ -6,8 +6,8 @@ import dimwit.*
   */
 object SIRSimulation:
 
-  trait Time derives Label
-  trait Group derives Label
+  sealed trait Time derives Label
+  sealed trait Group derives Label
 
   // Explicit state representation replaces the Compartment dimension
   case class SIRState(

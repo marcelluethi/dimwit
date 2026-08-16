@@ -15,7 +15,11 @@ package object dimwit:
   object StringLabelMath:
     infix type *[A <: String, B <: String] = A + "*" + B
 
-  trait Prime[T]
+  /** A closed wrapper, not an open one - it needs to be "final" (not just a
+    * plain trait) so that match types can rule it out structurally, the same
+    * way they can already rule out [[dimwit.tensor.Axis]].
+    */
+  final class Prime[T]
   object Prime:
     given [L](using label: Label[L]): Label[Prime[L]] with
       val name: String = s"${label.name}'"

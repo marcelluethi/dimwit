@@ -17,7 +17,19 @@ object Label:
   private def derivedMacro[T: Type](using Quotes): Expr[Label[T]] =
     import quotes.reflect.*
     val tpe = TypeRepr.of[T]
-    val simpleName = tpe.typeSymbol.name
+    val symbol = tpe.typeSymbol
+    val flags = symbol.flags
+    val isClosed = flags.is(Flags.Sealed) || flags.is(Flags.Final) || flags.is(Flags.Module)
+    if !isClosed then
+      report.errorAndAbort(
+        s"""Axis label ${symbol.name} must be declared 'sealed' (e.g. 'sealed trait ${symbol.name} derives Label').
+           |
+           |Shape operations (swap, dropPrimes, jacobian, ...) tell axis labels apart using match types,
+           |which can only rule two labels out as different when at least one of them is closed to further
+           |subtyping. An open trait could later be extended by some third type that is also a subtype of
+           |another label, so the compiler can never prove the two are distinct.""".stripMargin
+      )
+    val simpleName = symbol.name
     '{
       new Label[T]:
         def name: String = ${ Expr(simpleName) }

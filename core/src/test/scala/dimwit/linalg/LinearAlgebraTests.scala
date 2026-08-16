@@ -79,8 +79,8 @@ class LinearAlgebraTests extends DimwitTest:
   )
 
   describe("Eigendecomposition (eigh)"):
-    trait LEigen derives Label
-    trait LSpace derives Label
+    sealed trait LEigen derives Label
+    sealed trait LSpace derives Label
     it("eigenvalues of a diagonal matrix are its diagonal entries (ascending)"):
       val (eigenvalues, _) = LinearAlgebra.eigh(diagMat, Axis[LEigen], Axis[LSpace])
       eigenvalues should approxEqual(
@@ -109,7 +109,7 @@ class LinearAlgebraTests extends DimwitTest:
 
   describe("QR factorization"):
 
-    trait LBasis derives Label
+    sealed trait LBasis derives Label
 
     // Non-trivial 2×2 matrix; expected properties are sign-agnostic
     val qrMat = Tensor2(Axis[A], Axis[Prime[A]]).fromArray(
@@ -132,8 +132,8 @@ class LinearAlgebraTests extends DimwitTest:
         LinearAlgebra.norm(qrMat, LinearAlgebra.MatrixNormType.Frobenius).item +- 1e-4f
 
   describe("Singular value decomposition (SVD)"):
-    trait LBasis derives Label
-    trait LSing derives Label
+    sealed trait LBasis derives Label
+    sealed trait LSing derives Label
 
     it("singular values of a diagonal matrix are its diagonal entries (descending)"):
       val (_, s, _) = LinearAlgebra.svd(diagMat, Axis[LBasis], Axis[LSing])
@@ -143,7 +143,7 @@ class LinearAlgebraTests extends DimwitTest:
       )
 
     it("singular values sum equals nuclear norm"):
-      trait LBasis derives Label
+      sealed trait LBasis derives Label
       val (_, s, _) = LinearAlgebra.svd(diagMat, Axis[LBasis], Axis[LSing])
       s.sum.item shouldBe
         LinearAlgebra.norm(diagMat, LinearAlgebra.MatrixNormType.Nuclear).item +- 1e-4f
@@ -166,7 +166,7 @@ class LinearAlgebraTests extends DimwitTest:
       vhvht should approxEqual(expected, tolerance = 1e-5f)
 
   describe("Diagonal extraction"):
-    trait LDiag derives Label
+    sealed trait LDiag derives Label
 
     it("extracts the main diagonal of a diagonal matrix"):
       diagMat.diagonal(Axis[LDiag]) should approxEqual(

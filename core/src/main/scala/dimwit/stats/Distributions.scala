@@ -83,14 +83,14 @@ object IndependentDistribution:
       override def sample(k: Random.Key): Tensor[EventShape, V] =
 
         val flatSize = shape.dimensions.product
-        trait Samples derives Label
+        sealed trait Samples derives Label
         val samples = k.splitvmap(Axis[Samples] -> flatSize): key =>
           univariate.sample(key)
 
         samples.unflatten(shape)
 
       override def elementWiseLogProb(x: Tensor[EventShape, V]): Tensor[EventShape, LogProb] =
-        trait Samples derives Label
+        sealed trait Samples derives Label
         val flattened = x.flatten.relabelTo(Axis[Samples])
         val logprobs = flattened.vmap(Axis[Samples]) { xi =>
           univariate.logProb(xi)

@@ -5,9 +5,9 @@ import dimwit.*
 import dimwit.random.Random
 import dimwit.stats.Normal
 
-trait Point derives Label // N data points to cluster
-trait Dim derives Label // D feature dimensions (coordinates of each point)
-trait Cluster derives Label // K centroids — the result of clustering
+sealed trait Point derives Label // N data points to cluster
+sealed trait Dim derives Label // D feature dimensions (coordinates of each point)
+sealed trait Cluster derives Label // K centroids — the result of clustering
 
 trait CenterBasedClustering(
     val nClusters: Int

@@ -12,8 +12,8 @@ import dimwit.stats.Normal
 object LogisticRegression:
 
   // Define labels for tensor axes
-  trait Sample derives Label
-  trait Feature derives Label
+  sealed trait Sample derives Label
+  sealed trait Feature derives Label
 
   // Define a binary logistic regression model
   case class BinaryLogisticRegression(

@@ -233,10 +233,49 @@ class TensorOpsStructureSuite extends DimwitTest:
       dabc.axes shouldBe List("D", "A", "B", "C")
       dabc.shape(Axis[D]) shouldBe 1
 
+  describe("swap function"):
+    // Swap's match type tests each tuple element for identity against L1/L2. That
+    // reduction is stuck unless every label involved is closed (sealed), so these
+    // cases exercise the position that used to be unreachable: anywhere the target
+    // axis isn't literally the head of the tuple.
+
+    it("swaps two axes that both sit behind the head"):
+      val swapped: Tensor[(A, C, B), Float32] = t3.swap(Axis[B], Axis[C])
+      swapped.axes shouldBe List("A", "C", "B")
+      swapped should approxEqual(t3.transpose(Axis[A], Axis[C], Axis[B]))
+
+    it("swaps the head axis with a later one"):
+      val swapped: Tensor[(B, A, C), Float32] = t3.swap(Axis[A], Axis[B])
+      swapped.axes shouldBe List("B", "A", "C")
+      swapped should approxEqual(t3.transpose(Axis[B], Axis[A], Axis[C]))
+
+    it("swaps the outermost and innermost axis"):
+      val swapped: Tensor[(C, B, A), Float32] = t3.swap(Axis[A], Axis[C])
+      swapped.axes shouldBe List("C", "B", "A")
+      swapped should approxEqual(t3.transpose(Axis[C], Axis[B], Axis[A]))
+
+    it("swapping an axis with itself is the identity"):
+      val same: Tensor[(A, B, C), Float32] = t3.swap(Axis[A], Axis[A])
+      same should approxEqual(t3)
+
+  describe("dropPrimes"):
+
+    it("drops the prime from a primed trailing axis"):
+      val primed = Tensor(Shape(Axis[A] -> 2, Axis[Prime[B]] -> 3)).fill(1f)
+      val dropped: Tensor[(A, B), Float32] = primed.dropPrimes
+      dropped.axes shouldBe List("A", "B")
+      dropped should approxEqual(Tensor(Shape(Axis[A] -> 2, Axis[B] -> 3)).fill(1f))
+
+    it("drops primes from a mix of primed and unprimed axes"):
+      val primed = Tensor(Shape(Axis[Prime[A]] -> 2, Axis[B] -> 3, Axis[Prime[C]] -> 4)).fill(1f)
+      val dropped: Tensor[(A, B, C), Float32] = primed.dropPrimes
+      dropped.axes shouldBe List("A", "B", "C")
+      dropped.shape(Axis[C]) shouldBe 4
+
   describe("Relabeling"):
 
     it("relabel an axis"):
-      trait X derives Label
+      sealed trait X derives Label
       t3.relabel(Axis[A].as(Axis[X])).axes shouldBe List("X", "B", "C")
       t3.relabel(Axis[B].as(Axis[X])).axes shouldBe List("A", "X", "C")
       t3.relabel(Axis[C].as(Axis[X])).axes shouldBe List("A", "B", "X")
@@ -571,5 +610,23 @@ class TensorOpsStructureSuite extends DimwitTest:
             Array(3.0f, 4.0f), // C = 0 (from t1)
             Array(7.0f, 8.0f) // C = 1 (from t2)
           )
+        )
+      ))
+
+    it("stacks after an axis that is not the head"):
+      // InsertAfter's match type only ever reduced when afterAxis was literally the
+      // head of the tuple - the test above never caught that, since Axis[A] already
+      // is the head of (A, B). Insert after B instead, so B *: tail is compared
+      // against the pattern for A first and must be ruled out as non-matching.
+      val t1 = Tensor2(Axis[A], Axis[B]).fromArray(Array(Array(1.0f, 2.0f), Array(3.0f, 4.0f)))
+      val t2 = Tensor2(Axis[A], Axis[B]).fromArray(Array(Array(5.0f, 6.0f), Array(7.0f, 8.0f)))
+
+      val stacked = stack(Seq(t1, t2), newAxis = Axis[C], afterAxis = Axis[B])
+
+      stacked.axes shouldBe List("A", "B", "C")
+      stacked should approxEqual(Tensor3(Axis[A], Axis[B], Axis[C]).fromArray(
+        Array(
+          Array(Array(1.0f, 5.0f), Array(2.0f, 6.0f)),
+          Array(Array(3.0f, 7.0f), Array(4.0f, 8.0f))
         )
       ))

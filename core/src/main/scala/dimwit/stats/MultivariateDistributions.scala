@@ -54,7 +54,7 @@ class Multinomial[L: Label](
 
   override def sample(key: Random.Key): Tensor1[L, Int32] =
     // Sample from categorical n times using splitvmap, then bincount
-    trait Draws derives Label
+    sealed trait Draws derives Label
     val draws = key.splitvmap(Axis[Draws] -> n.item)(k => categorical.sample(k))
     liftPyTensor(
       Jax.jnp.bincount(draws.jaxValue, length = probs.shape.dimensions(0))

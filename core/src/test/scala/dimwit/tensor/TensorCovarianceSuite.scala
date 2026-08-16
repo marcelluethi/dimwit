@@ -6,9 +6,9 @@ import scala.collection.View.Empty
 class TensorCovarianceSuite extends DimwitTest:
 
   it("Shape type hierarchy example: Generic function with upper-bounded type parameter"):
-    trait Parent derives Label
-    trait Child1 extends Parent derives Label
-    trait Child2 extends Parent derives Label
+    sealed trait Parent derives Label
+    sealed trait Child1 extends Parent derives Label
+    sealed trait Child2 extends Parent derives Label
     def genericFunction[T <: Parent: Label](t: Tensor1[T, Float32]): Tensor1[T, Float32] = t + t
     val child1: Tensor1[Child1, Float32] = Tensor(Shape1(Axis[Child1] -> 4)).fill(1f)
     val child2: Tensor1[Child2, Float32] = Tensor(Shape1(Axis[Child2] -> 4)).fill(1f)
@@ -18,7 +18,7 @@ class TensorCovarianceSuite extends DimwitTest:
     "genericFunction(noChild)" shouldNot compile
 
   it("Value-types example: Logits cannot be added to Probabilities"):
-    trait Classes derives Label
+    sealed trait Classes derives Label
 
     object MLContext:
       opaque type Logit = Float32
