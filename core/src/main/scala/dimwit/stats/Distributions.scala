@@ -38,6 +38,11 @@ trait Distribution[EventShape <: Tuple: Labels, V]:
   /** Compute log probability (always returns scalar) */
   def logProb(x: Tensor[EventShape, V]): Tensor0[LogProb]
 
+  /** The set of values an event can take. Concrete distributions narrow the return type to their case,
+    * e.g. `Support.Interval[T, V]`, so that code knowing the distribution can resolve e.g. a bijector statically.
+    */
+  def support: Support[EventShape, V]
+
   /** Probability (exponentiated log probability) */
   def prob(x: Tensor[EventShape, V]): Tensor0[Prob] =
     logProb(x).exp
@@ -79,6 +84,8 @@ object IndependentDistribution:
       univariate: UnivariateDistribution[V]
   ): IndependentDistribution[EventShape, V] =
     new IndependentDistribution[EventShape, V]:
+      override def support: Support[EventShape, V] = Support.broadcast(univariate.support, shape)
+
       override def sample(k: Random.Key): Tensor[EventShape, V] =
 
         val flatSize = shape.dimensions.product

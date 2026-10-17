@@ -15,6 +15,8 @@ class MVNormal[L: Label, V: IsFloating](
     val covariance: Tensor2[L, Prime[L], V]
 ) extends MultivariateDistribution[L, V]:
 
+  override def support: Support.Real[Tuple1[L], V] = Support.Real()
+
   override def logProb(x: Tensor1[L, V]): Tensor0[LogProb] =
     liftPyTensor(jstats.multivariate_normal.logpdf(x.jaxValue, mean = mean.jaxValue, cov = covariance.jaxValue))
 
@@ -30,6 +32,8 @@ class MVNormal[L: Label, V: IsFloating](
 class Dirichlet[L: Label, V: IsFloating](
     val concentration: Tensor1[L, V]
 ) extends MultivariateDistribution[L, V]:
+
+  override def support: Support.Simplex[L, V] = Support.Simplex()
 
   override def logProb(x: Tensor1[L, V]): Tensor0[LogProb] =
     liftPyTensor(jstats.dirichlet.logpdf(x.jaxValue, alpha = concentration.jaxValue))
@@ -48,6 +52,8 @@ class Multinomial[L: Label](
 ) extends MultivariateDistribution[L, Int32]:
 
   private val categorical: Categorical[L] = Categorical[L](probs)
+
+  override def support: Support.MultinomialCounts[L, Int32] = Support.MultinomialCounts(n)
 
   override def logProb(x: Tensor1[L, Int32]): Tensor0[LogProb] =
     liftPyTensor(jstats.multinomial.logpmf(x.jaxValue, n = n.jaxValue, p = probs.jaxValue))

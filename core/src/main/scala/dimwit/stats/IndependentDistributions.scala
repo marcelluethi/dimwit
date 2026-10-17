@@ -12,6 +12,8 @@ import me.shadaj.scalapy.py.SeqConverters
 /** Normal (Gaussian) distribution */
 class Normal[T <: Tuple: Labels, V: IsFloating](val loc: Tensor[T, V], val scale: Tensor[T, V]) extends IndependentDistribution[T, V]:
 
+  override def support: Support.Real[T, V] = Support.Real()
+
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     liftPyTensor(jstats.norm.logpdf(x.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue))
 
@@ -36,6 +38,8 @@ object Normal:
 
 /** Truncated Normal (Gaussian) distribution */
 class TruncatedNormal[T <: Tuple: Labels, V: IsFloating](val loc: Tensor[T, V], val scale: Tensor[T, V], val low: Tensor[T, V], val high: Tensor[T, V]) extends IndependentDistribution[T, V]:
+
+  override def support: Support.Interval[T, V] = Support.Interval(low, high)
 
   private lazy val a = (low - loc) / scale
   private lazy val b = (high - loc) / scale
@@ -63,6 +67,8 @@ object TruncatedNormal:
 /** Uniform distribution */
 class Uniform[T <: Tuple: Labels, V: IsFloating](val low: Tensor[T, V], val high: Tensor[T, V]) extends IndependentDistribution[T, V]:
 
+  override def support: Support.Interval[T, V] = Support.Interval(low, high)
+
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     liftPyTensor(jstats.uniform.logpdf(x.jaxValue, loc = low.jaxValue, scale = (high - low).jaxValue))
 
@@ -75,6 +81,8 @@ class Uniform[T <: Tuple: Labels, V: IsFloating](val low: Tensor[T, V], val high
   *  i.e. min is inclusive, max exclusive.
   */
 class DiscreteUniform[T <: Tuple: Labels](val min: Tensor[T, Int32], val max: Tensor[T, Int32]) extends IndependentDistribution[T, Int32]:
+
+  override def support: Support.IntegerInterval[T, Int32] = Support.IntegerInterval(min, max - Tensor.like(max).fill(1))
 
   override def elementWiseLogProb(x: Tensor[T, Int32]): Tensor[T, LogProb] =
     val logProb = LogProb(-(max - min).asFloat32.log)
@@ -97,6 +105,8 @@ object Uniform:
 /** Bernoulli distribution */
 class Bernoulli[T <: Tuple: Labels](val probs: Tensor[T, Prob]) extends IndependentDistribution[T, Bool]:
 
+  override def support: Support.Binary[T] = Support.Binary()
+
   override def elementWiseLogProb(x: Tensor[T, Bool]): Tensor[T, LogProb] =
     liftPyTensor(jstats.bernoulli.logpmf(x.jaxValue, p = probs.jaxValue))
 
@@ -111,6 +121,11 @@ object Bernoulli:
 
 /** Binomial distribution - number of successes in n independent Bernoulli trials */
 class Binomial[T <: Tuple: Labels, V: IsInteger](val n: Tensor0[V], val probs: Tensor[T, Prob]) extends IndependentDistribution[T, V]:
+
+  override def support: Support.IntegerInterval[T, V] =
+    // n is shared by all elements; scale (unlike broadcastTo) also works for a scalar Binomial, T = EmptyTuple
+    val upper = Tensor(probs.shape, VType[V]).fill(1).scale(n)
+    Support.IntegerInterval(Tensor(probs.shape, VType[V]).fill(0), upper)
 
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     liftPyTensor(jstats.binom.logpmf(x.jaxValue, n = n.jaxValue, p = probs.jaxValue))
@@ -129,6 +144,8 @@ object Binomial:
 /** Cauchy distribution */
 class Cauchy[T <: Tuple: Labels, V: IsFloating](val loc: Tensor[T, V], val scale: Tensor[T, V]) extends IndependentDistribution[T, V]:
 
+  override def support: Support.Real[T, V] = Support.Real()
+
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     liftPyTensor(jstats.cauchy.logpdf(x.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue))
 
@@ -144,6 +161,8 @@ object Cauchy:
 
 /** Half-Cauchy distribution - absolute value of a Cauchy-distributed random variable */
 class HalfCauchy[T <: Tuple: Labels, V: IsFloating](val loc: Tensor[T, V], val scale: Tensor[T, V]) extends IndependentDistribution[T, V]:
+
+  override def support: Support.GreaterThan[T, V] = Support.GreaterThan(loc)
 
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     // Half-Cauchy logpdf = log(2) + cauchy.logpdf for x >= loc, -inf otherwise
@@ -169,6 +188,8 @@ object HalfCauchy:
 /** Half-normal distribution */
 class HalfNormal[T <: Tuple: Labels, V: IsFloating](val loc: Tensor[T, V], val scale: Tensor[T, V]) extends IndependentDistribution[T, V]:
 
+  override def support: Support.GreaterThan[T, V] = Support.GreaterThan(loc)
+
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     // Half-normal logpdf = log(2) + norm.logpdf for x >= loc, -inf otherwise
     val rawLogProb = liftPyTensor(x.shape, VType[LogProb])(
@@ -193,6 +214,8 @@ object HalfNormal:
 /** Student's t-distribution */
 class StudentT[T <: Tuple: Labels, V: IsFloating](val df: Tensor0[V], val loc: Tensor[T, V], val scale: Tensor[T, V]) extends IndependentDistribution[T, V]:
 
+  override def support: Support.Real[T, V] = Support.Real()
+
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     liftPyTensor(jstats.t.logpdf(x.jaxValue, df = df.jaxValue, loc = loc.jaxValue, scale = scale.jaxValue))
 
@@ -210,6 +233,8 @@ object StudentT:
 
 /** Beta distribution */
 class Beta[T <: Tuple: Labels, V: IsFloating](val alpha: Tensor[T, V], val beta: Tensor[T, V]) extends IndependentDistribution[T, V]:
+
+  override def support: Support.Interval[T, V] = Support.Interval(Tensor.like(alpha).fill(0f), Tensor.like(alpha).fill(1f))
 
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
     liftPyTensor(jstats.beta.logpdf(x.jaxValue, a = alpha.jaxValue, b = beta.jaxValue))
@@ -229,6 +254,8 @@ object Beta:
 /** Exponential distribution */
 class Exponential[T <: Tuple: Labels, V: IsFloating](val rate: Tensor[T, V]) extends IndependentDistribution[T, V]:
 
+  override def support: Support.GreaterThan[T, V] = Support.GreaterThan(Tensor.like(rate).fill(0f))
+
   lazy val scale = (Tensor0(1f).asType(VType[V]) /! rate).jaxValue
 
   override def elementWiseLogProb(x: Tensor[T, V]): Tensor[T, LogProb] =
@@ -243,6 +270,8 @@ class Exponential[T <: Tuple: Labels, V: IsFloating](val rate: Tensor[T, V]) ext
     stndExp / rate
 
 class Poisson[T <: Tuple: Labels, VSample: IsInteger, VRate: IsFloating](val rate: Tensor[T, VRate]) extends IndependentDistribution[T, VSample]:
+
+  override def support: Support.IntegerGreaterThanOrEqual[T, VSample] = Support.nonNegativeInteger(rate.shape)
 
   override def elementWiseLogProb(x: Tensor[T, VSample]): Tensor[T, LogProb] =
     liftPyTensor(jstats.poisson.logpmf(x.jaxValue, mu = rate.jaxValue))
